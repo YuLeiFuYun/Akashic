@@ -1,0 +1,1307 @@
+{
+  "modules": [
+    {
+      "module": "AkashicCore",
+      "relationships": [
+        {
+          "kind": "conformsTo",
+          "source": "AkashicError",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "AkashicError",
+          "target": "Swift.Error"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "AkashicError",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "AkashicError",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "AkashicError",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigest",
+          "target": "Swift.Decodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigest",
+          "target": "Swift.Encodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigest",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigest",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigest",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigest",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigestAlgorithm",
+          "target": "Swift.CaseIterable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigestAlgorithm",
+          "target": "Swift.Decodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigestAlgorithm",
+          "target": "Swift.Encodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigestAlgorithm",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigestAlgorithm",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigestAlgorithm",
+          "target": "Swift.RawRepresentable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigestAlgorithm",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobDigestAlgorithm",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobMaintenanceLimits",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobMaintenanceLimits",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobMaintenanceLimits",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobMaintenanceLimits",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobMaintenanceResult",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobMaintenanceResult",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobMaintenanceResult",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobMaintenanceResult",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublication",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublication",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublication",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublication",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublicationDisposition",
+          "target": "Swift.Decodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublicationDisposition",
+          "target": "Swift.Encodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublicationDisposition",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublicationDisposition",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublicationDisposition",
+          "target": "Swift.RawRepresentable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublicationDisposition",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobPublicationDisposition",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobStage",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobStage",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobStage",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobStage",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobStoreMaintaining",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobStoreMaintaining",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobStoreMaintaining",
+          "target": "s:11AkashicCore11BlobStoringP"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobStoring",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "BlobStoring",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "CachePartitionID",
+          "target": "Swift.Decodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "CachePartitionID",
+          "target": "Swift.Encodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "CachePartitionID",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "CachePartitionID",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "CachePartitionID",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "CachePartitionID",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "LiveBlobReference",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "LiveBlobReference",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "LiveBlobReference",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "LiveBlobReference",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "PhysicalBlobID",
+          "target": "Swift.Decodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "PhysicalBlobID",
+          "target": "Swift.Encodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "PhysicalBlobID",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "PhysicalBlobID",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "PhysicalBlobID",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "PhysicalBlobID",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationDescriptor",
+          "target": "Swift.Decodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationDescriptor",
+          "target": "Swift.Encodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationDescriptor",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationDescriptor",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationDescriptor",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationDescriptor",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationID",
+          "target": "Swift.Decodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationID",
+          "target": "Swift.Encodable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationID",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationID",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationID",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationID",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationManaging",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationManaging",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "TransactionalBlobStoring",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "TransactionalBlobStoring",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "TransactionalBlobStoring",
+          "target": "s:11AkashicCore11BlobStoringP"
+        }
+      ],
+      "symbolCount": 82,
+      "symbols": [
+        {
+          "declaration": "enum AkashicError",
+          "kind": "swift.enum",
+          "path": "AkashicError",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO"
+        },
+        {
+          "declaration": "case integrityMismatch",
+          "kind": "swift.enum.case",
+          "path": "AkashicError.integrityMismatch",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO17integrityMismatchyA2CmF"
+        },
+        {
+          "declaration": "case invalidIdentity",
+          "kind": "swift.enum.case",
+          "path": "AkashicError.invalidIdentity",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO15invalidIdentityyA2CmF"
+        },
+        {
+          "declaration": "case invalidManifest",
+          "kind": "swift.enum.case",
+          "path": "AkashicError.invalidManifest",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO15invalidManifestyA2CmF"
+        },
+        {
+          "declaration": "case limitExceeded",
+          "kind": "swift.enum.case",
+          "path": "AkashicError.limitExceeded",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO13limitExceededyA2CmF"
+        },
+        {
+          "declaration": "case notFound",
+          "kind": "swift.enum.case",
+          "path": "AkashicError.notFound",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO8notFoundyA2CmF"
+        },
+        {
+          "declaration": "case storageUnavailable",
+          "kind": "swift.enum.case",
+          "path": "AkashicError.storageUnavailable",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO18storageUnavailableyA2CmF"
+        },
+        {
+          "declaration": "case transactionConflict",
+          "kind": "swift.enum.case",
+          "path": "AkashicError.transactionConflict",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO19transactionConflictyA2CmF"
+        },
+        {
+          "declaration": "case unsupportedCapability",
+          "kind": "swift.enum.case",
+          "path": "AkashicError.unsupportedCapability",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO21unsupportedCapabilityyA2CmF"
+        },
+        {
+          "declaration": "case unsupportedSchema",
+          "kind": "swift.enum.case",
+          "path": "AkashicError.unsupportedSchema",
+          "preciseIdentifier": "s:11AkashicCore0A5ErrorO17unsupportedSchemayA2CmF"
+        },
+        {
+          "declaration": "struct BlobDigest",
+          "kind": "swift.struct",
+          "path": "BlobDigest",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV"
+        },
+        {
+          "declaration": "let algorithm: BlobDigestAlgorithm",
+          "kind": "swift.property",
+          "path": "BlobDigest.algorithm",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV9algorithmAA0cD9AlgorithmOvp"
+        },
+        {
+          "declaration": "let byteCount: Int",
+          "kind": "swift.property",
+          "path": "BlobDigest.byteCount",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV9byteCountSivp"
+        },
+        {
+          "declaration": "let bytes: Data",
+          "kind": "swift.property",
+          "path": "BlobDigest.bytes",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV5bytes10Foundation4DataVvp"
+        },
+        {
+          "declaration": "var canonicalString: String { get }",
+          "kind": "swift.property",
+          "path": "BlobDigest.canonicalString",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV15canonicalStringSSvp"
+        },
+        {
+          "declaration": "func encode(to encoder: any Encoder) throws",
+          "kind": "swift.method",
+          "path": "BlobDigest.encode(to:)",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV6encode2toys7Encoder_p_tKF"
+        },
+        {
+          "declaration": "init(algorithm: BlobDigestAlgorithm, bytes: Data, byteCount: Int) throws",
+          "kind": "swift.init",
+          "path": "BlobDigest.init(algorithm:bytes:byteCount:)",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV9algorithm5bytes9byteCountAcA0cD9AlgorithmO_10Foundation4DataVSitKcfc"
+        },
+        {
+          "declaration": "init(canonicalString: String) throws",
+          "kind": "swift.init",
+          "path": "BlobDigest.init(canonicalString:)",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV15canonicalStringACSS_tKcfc"
+        },
+        {
+          "declaration": "init(from decoder: any Decoder) throws",
+          "kind": "swift.init",
+          "path": "BlobDigest.init(from:)",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV4fromACs7Decoder_p_tKcfc"
+        },
+        {
+          "declaration": "func matches(_ data: Data) -> Bool",
+          "kind": "swift.method",
+          "path": "BlobDigest.matches(_:)",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV7matchesySb10Foundation4DataVF"
+        },
+        {
+          "declaration": "static func sha256(of data: Data) -> BlobDigest",
+          "kind": "swift.type.method",
+          "path": "BlobDigest.sha256(of:)",
+          "preciseIdentifier": "s:11AkashicCore10BlobDigestV6sha2562ofAC10Foundation4DataV_tFZ"
+        },
+        {
+          "declaration": "enum BlobDigestAlgorithm",
+          "kind": "swift.enum",
+          "path": "BlobDigestAlgorithm",
+          "preciseIdentifier": "s:11AkashicCore19BlobDigestAlgorithmO"
+        },
+        {
+          "declaration": "var digestByteCount: Int { get }",
+          "kind": "swift.property",
+          "path": "BlobDigestAlgorithm.digestByteCount",
+          "preciseIdentifier": "s:11AkashicCore19BlobDigestAlgorithmO15digestByteCountSivp"
+        },
+        {
+          "declaration": "init?(rawValue: String)",
+          "kind": "swift.init",
+          "path": "BlobDigestAlgorithm.init(rawValue:)",
+          "preciseIdentifier": "s:11AkashicCore19BlobDigestAlgorithmO8rawValueACSgSS_tcfc"
+        },
+        {
+          "declaration": "case sha256",
+          "kind": "swift.enum.case",
+          "path": "BlobDigestAlgorithm.sha256",
+          "preciseIdentifier": "s:11AkashicCore19BlobDigestAlgorithmO6sha256yA2CmF"
+        },
+        {
+          "declaration": "struct BlobMaintenanceLimits",
+          "kind": "swift.struct",
+          "path": "BlobMaintenanceLimits",
+          "preciseIdentifier": "s:11AkashicCore21BlobMaintenanceLimitsV"
+        },
+        {
+          "declaration": "init(maximumReferenceCount: Int, maximumReferencedBytes: Int) throws",
+          "kind": "swift.init",
+          "path": "BlobMaintenanceLimits.init(maximumReferenceCount:maximumReferencedBytes:)",
+          "preciseIdentifier": "s:11AkashicCore21BlobMaintenanceLimitsV21maximumReferenceCount0F15ReferencedBytesACSi_SitKcfc"
+        },
+        {
+          "declaration": "let maximumReferenceCount: Int",
+          "kind": "swift.property",
+          "path": "BlobMaintenanceLimits.maximumReferenceCount",
+          "preciseIdentifier": "s:11AkashicCore21BlobMaintenanceLimitsV21maximumReferenceCountSivp"
+        },
+        {
+          "declaration": "let maximumReferencedBytes: Int",
+          "kind": "swift.property",
+          "path": "BlobMaintenanceLimits.maximumReferencedBytes",
+          "preciseIdentifier": "s:11AkashicCore21BlobMaintenanceLimitsV22maximumReferencedBytesSivp"
+        },
+        {
+          "declaration": "func validate(_ references: Set<LiveBlobReference>) throws",
+          "kind": "swift.method",
+          "path": "BlobMaintenanceLimits.validate(_:)",
+          "preciseIdentifier": "s:11AkashicCore21BlobMaintenanceLimitsV8validateyyShyAA04LiveC9ReferenceVGKF"
+        },
+        {
+          "declaration": "struct BlobMaintenanceResult",
+          "kind": "swift.struct",
+          "path": "BlobMaintenanceResult",
+          "preciseIdentifier": "s:11AkashicCore21BlobMaintenanceResultV"
+        },
+        {
+          "declaration": "init(removedBlobCount: Int, removedByteCount: Int) throws",
+          "kind": "swift.init",
+          "path": "BlobMaintenanceResult.init(removedBlobCount:removedByteCount:)",
+          "preciseIdentifier": "s:11AkashicCore21BlobMaintenanceResultV07removedC5Count0f4ByteG0ACSi_SitKcfc"
+        },
+        {
+          "declaration": "let removedBlobCount: Int",
+          "kind": "swift.property",
+          "path": "BlobMaintenanceResult.removedBlobCount",
+          "preciseIdentifier": "s:11AkashicCore21BlobMaintenanceResultV07removedC5CountSivp"
+        },
+        {
+          "declaration": "let removedByteCount: Int",
+          "kind": "swift.property",
+          "path": "BlobMaintenanceResult.removedByteCount",
+          "preciseIdentifier": "s:11AkashicCore21BlobMaintenanceResultV16removedByteCountSivp"
+        },
+        {
+          "declaration": "struct BlobPublication",
+          "kind": "swift.struct",
+          "path": "BlobPublication",
+          "preciseIdentifier": "s:11AkashicCore15BlobPublicationV"
+        },
+        {
+          "declaration": "let byteCount: Int",
+          "kind": "swift.property",
+          "path": "BlobPublication.byteCount",
+          "preciseIdentifier": "s:11AkashicCore15BlobPublicationV9byteCountSivp"
+        },
+        {
+          "declaration": "let disposition: BlobPublicationDisposition",
+          "kind": "swift.property",
+          "path": "BlobPublication.disposition",
+          "preciseIdentifier": "s:11AkashicCore15BlobPublicationV11dispositionAA0cD11DispositionOvp"
+        },
+        {
+          "declaration": "init(physicalID: PhysicalBlobID, byteCount: Int, disposition: BlobPublicationDisposition) throws",
+          "kind": "swift.init",
+          "path": "BlobPublication.init(physicalID:byteCount:disposition:)",
+          "preciseIdentifier": "s:11AkashicCore15BlobPublicationV10physicalID9byteCount11dispositionAcA08PhysicalcF0V_SiAA0cD11DispositionOtKcfc"
+        },
+        {
+          "declaration": "let physicalID: PhysicalBlobID",
+          "kind": "swift.property",
+          "path": "BlobPublication.physicalID",
+          "preciseIdentifier": "s:11AkashicCore15BlobPublicationV10physicalIDAA08PhysicalcF0Vvp"
+        },
+        {
+          "declaration": "enum BlobPublicationDisposition",
+          "kind": "swift.enum",
+          "path": "BlobPublicationDisposition",
+          "preciseIdentifier": "s:11AkashicCore26BlobPublicationDispositionO"
+        },
+        {
+          "declaration": "case created",
+          "kind": "swift.enum.case",
+          "path": "BlobPublicationDisposition.created",
+          "preciseIdentifier": "s:11AkashicCore26BlobPublicationDispositionO7createdyA2CmF"
+        },
+        {
+          "declaration": "init?(rawValue: String)",
+          "kind": "swift.init",
+          "path": "BlobPublicationDisposition.init(rawValue:)",
+          "preciseIdentifier": "s:11AkashicCore26BlobPublicationDispositionO8rawValueACSgSS_tcfc"
+        },
+        {
+          "declaration": "case reused",
+          "kind": "swift.enum.case",
+          "path": "BlobPublicationDisposition.reused",
+          "preciseIdentifier": "s:11AkashicCore26BlobPublicationDispositionO6reusedyA2CmF"
+        },
+        {
+          "declaration": "struct BlobStage",
+          "kind": "swift.struct",
+          "path": "BlobStage",
+          "preciseIdentifier": "s:11AkashicCore9BlobStageV"
+        },
+        {
+          "declaration": "init(rawValue: UUID = UUID())",
+          "kind": "swift.init",
+          "path": "BlobStage.init(rawValue:)",
+          "preciseIdentifier": "s:11AkashicCore9BlobStageV8rawValueAC10Foundation4UUIDV_tcfc"
+        },
+        {
+          "declaration": "let rawValue: UUID",
+          "kind": "swift.property",
+          "path": "BlobStage.rawValue",
+          "preciseIdentifier": "s:11AkashicCore9BlobStageV8rawValue10Foundation4UUIDVvp"
+        },
+        {
+          "declaration": "protocol BlobStoreMaintaining : BlobStoring",
+          "kind": "swift.protocol",
+          "path": "BlobStoreMaintaining",
+          "preciseIdentifier": "s:11AkashicCore20BlobStoreMaintainingP"
+        },
+        {
+          "declaration": "func garbageCollect(retaining references: Set<LiveBlobReference>, limits: BlobMaintenanceLimits) async throws -> BlobMaintenanceResult",
+          "kind": "swift.method",
+          "path": "BlobStoreMaintaining.garbageCollect(retaining:limits:)",
+          "preciseIdentifier": "s:11AkashicCore20BlobStoreMaintainingP14garbageCollect9retaining6limitsAA0C17MaintenanceResultVShyAA04LiveC9ReferenceVG_AA0cJ6LimitsVtYaKF"
+        },
+        {
+          "declaration": "protocol BlobStoring : Sendable",
+          "kind": "swift.protocol",
+          "path": "BlobStoring",
+          "preciseIdentifier": "s:11AkashicCore11BlobStoringP"
+        },
+        {
+          "declaration": "@discardableResult func commit(data: Data, digest: BlobDigest, partition: CachePartitionID) async throws -> BlobPublication",
+          "kind": "swift.method",
+          "path": "BlobStoring.commit(data:digest:partition:)",
+          "preciseIdentifier": "s:11AkashicCore11BlobStoringP6commit4data6digest9partitionAA0C11PublicationV10Foundation4DataV_AA0C6DigestVAA16CachePartitionIDVtYaKF"
+        },
+        {
+          "declaration": "func physicalID(digest: BlobDigest, partition: CachePartitionID) async -> PhysicalBlobID?",
+          "kind": "swift.method",
+          "path": "BlobStoring.physicalID(digest:partition:)",
+          "preciseIdentifier": "s:11AkashicCore11BlobStoringP10physicalID6digest9partitionAA08PhysicalcF0VSgAA0C6DigestV_AA014CachePartitionF0VtYaF"
+        },
+        {
+          "declaration": "func read(digest: BlobDigest, partition: CachePartitionID) async throws -> Data",
+          "kind": "swift.method",
+          "path": "BlobStoring.read(digest:partition:)",
+          "preciseIdentifier": "s:11AkashicCore11BlobStoringP4read6digest9partition10Foundation4DataVAA0C6DigestV_AA16CachePartitionIDVtYaKF"
+        },
+        {
+          "declaration": "func remove(digest: BlobDigest, partition: CachePartitionID) async throws",
+          "kind": "swift.method",
+          "path": "BlobStoring.remove(digest:partition:)",
+          "preciseIdentifier": "s:11AkashicCore11BlobStoringP6remove6digest9partitionyAA0C6DigestV_AA16CachePartitionIDVtYaKF"
+        },
+        {
+          "declaration": "func removeAll(partition: CachePartitionID) async throws",
+          "kind": "swift.method",
+          "path": "BlobStoring.removeAll(partition:)",
+          "preciseIdentifier": "s:11AkashicCore11BlobStoringP9removeAll9partitionyAA16CachePartitionIDV_tYaKF"
+        },
+        {
+          "declaration": "struct CachePartitionID",
+          "kind": "swift.struct",
+          "path": "CachePartitionID",
+          "preciseIdentifier": "s:11AkashicCore16CachePartitionIDV"
+        },
+        {
+          "declaration": "static func derive(domain: String, material: Data) throws -> CachePartitionID",
+          "kind": "swift.type.method",
+          "path": "CachePartitionID.derive(domain:material:)",
+          "preciseIdentifier": "s:11AkashicCore16CachePartitionIDV6derive6domain8materialACSS_10Foundation4DataVtKFZ"
+        },
+        {
+          "declaration": "func encode(to encoder: any Encoder) throws",
+          "kind": "swift.method",
+          "path": "CachePartitionID.encode(to:)",
+          "preciseIdentifier": "s:11AkashicCore16CachePartitionIDV6encode2toys7Encoder_p_tKF"
+        },
+        {
+          "declaration": "init(bytes: Data) throws",
+          "kind": "swift.init",
+          "path": "CachePartitionID.init(bytes:)",
+          "preciseIdentifier": "s:11AkashicCore16CachePartitionIDV5bytesAC10Foundation4DataV_tKcfc"
+        },
+        {
+          "declaration": "init(from decoder: any Decoder) throws",
+          "kind": "swift.init",
+          "path": "CachePartitionID.init(from:)",
+          "preciseIdentifier": "s:11AkashicCore16CachePartitionIDV4fromACs7Decoder_p_tKcfc"
+        },
+        {
+          "declaration": "struct LiveBlobReference",
+          "kind": "swift.struct",
+          "path": "LiveBlobReference",
+          "preciseIdentifier": "s:11AkashicCore17LiveBlobReferenceV"
+        },
+        {
+          "declaration": "let digest: BlobDigest",
+          "kind": "swift.property",
+          "path": "LiveBlobReference.digest",
+          "preciseIdentifier": "s:11AkashicCore17LiveBlobReferenceV6digestAA0D6DigestVvp"
+        },
+        {
+          "declaration": "init(partition: CachePartitionID, digest: BlobDigest)",
+          "kind": "swift.init",
+          "path": "LiveBlobReference.init(partition:digest:)",
+          "preciseIdentifier": "s:11AkashicCore17LiveBlobReferenceV9partition6digestAcA16CachePartitionIDV_AA0D6DigestVtcfc"
+        },
+        {
+          "declaration": "let partition: CachePartitionID",
+          "kind": "swift.property",
+          "path": "LiveBlobReference.partition",
+          "preciseIdentifier": "s:11AkashicCore17LiveBlobReferenceV9partitionAA16CachePartitionIDVvp"
+        },
+        {
+          "declaration": "struct PhysicalBlobID",
+          "kind": "swift.struct",
+          "path": "PhysicalBlobID",
+          "preciseIdentifier": "s:11AkashicCore14PhysicalBlobIDV"
+        },
+        {
+          "declaration": "init(from decoder: any Decoder) throws",
+          "kind": "swift.init",
+          "path": "PhysicalBlobID.init(from:)",
+          "preciseIdentifier": "s:11AkashicCore14PhysicalBlobIDV4fromACs7Decoder_p_tKcfc"
+        },
+        {
+          "declaration": "init(rawValue: UUID = UUID())",
+          "kind": "swift.init",
+          "path": "PhysicalBlobID.init(rawValue:)",
+          "preciseIdentifier": "s:11AkashicCore14PhysicalBlobIDV8rawValueAC10Foundation4UUIDV_tcfc"
+        },
+        {
+          "declaration": "let rawValue: UUID",
+          "kind": "swift.property",
+          "path": "PhysicalBlobID.rawValue",
+          "preciseIdentifier": "s:11AkashicCore14PhysicalBlobIDV8rawValue10Foundation4UUIDVvp"
+        },
+        {
+          "declaration": "struct StoreGenerationDescriptor",
+          "kind": "swift.struct",
+          "path": "StoreGenerationDescriptor",
+          "preciseIdentifier": "s:11AkashicCore25StoreGenerationDescriptorV"
+        },
+        {
+          "declaration": "let compatibilityFingerprint: String",
+          "kind": "swift.property",
+          "path": "StoreGenerationDescriptor.compatibilityFingerprint",
+          "preciseIdentifier": "s:11AkashicCore25StoreGenerationDescriptorV24compatibilityFingerprintSSvp"
+        },
+        {
+          "declaration": "let identifier: StoreGenerationID",
+          "kind": "swift.property",
+          "path": "StoreGenerationDescriptor.identifier",
+          "preciseIdentifier": "s:11AkashicCore25StoreGenerationDescriptorV10identifierAA0cD2IDVvp"
+        },
+        {
+          "declaration": "init(from decoder: any Decoder) throws",
+          "kind": "swift.init",
+          "path": "StoreGenerationDescriptor.init(from:)",
+          "preciseIdentifier": "s:11AkashicCore25StoreGenerationDescriptorV4fromACs7Decoder_p_tKcfc"
+        },
+        {
+          "declaration": "init(identifier: StoreGenerationID, compatibilityFingerprint: String) throws",
+          "kind": "swift.init",
+          "path": "StoreGenerationDescriptor.init(identifier:compatibilityFingerprint:)",
+          "preciseIdentifier": "s:11AkashicCore25StoreGenerationDescriptorV10identifier24compatibilityFingerprintAcA0cD2IDV_SStKcfc"
+        },
+        {
+          "declaration": "struct StoreGenerationID",
+          "kind": "swift.struct",
+          "path": "StoreGenerationID",
+          "preciseIdentifier": "s:11AkashicCore17StoreGenerationIDV"
+        },
+        {
+          "declaration": "init(from decoder: any Decoder) throws",
+          "kind": "swift.init",
+          "path": "StoreGenerationID.init(from:)",
+          "preciseIdentifier": "s:11AkashicCore17StoreGenerationIDV4fromACs7Decoder_p_tKcfc"
+        },
+        {
+          "declaration": "init(rawValue: UUID = UUID())",
+          "kind": "swift.init",
+          "path": "StoreGenerationID.init(rawValue:)",
+          "preciseIdentifier": "s:11AkashicCore17StoreGenerationIDV8rawValueAC10Foundation4UUIDV_tcfc"
+        },
+        {
+          "declaration": "let rawValue: UUID",
+          "kind": "swift.property",
+          "path": "StoreGenerationID.rawValue",
+          "preciseIdentifier": "s:11AkashicCore17StoreGenerationIDV8rawValue10Foundation4UUIDVvp"
+        },
+        {
+          "declaration": "protocol StoreGenerationManaging : Sendable",
+          "kind": "swift.protocol",
+          "path": "StoreGenerationManaging",
+          "preciseIdentifier": "s:11AkashicCore23StoreGenerationManagingP"
+        },
+        {
+          "declaration": "func openGeneration(compatibilityFingerprint: String) async throws -> StoreGenerationDescriptor",
+          "kind": "swift.method",
+          "path": "StoreGenerationManaging.openGeneration(compatibilityFingerprint:)",
+          "preciseIdentifier": "s:11AkashicCore23StoreGenerationManagingP04openD024compatibilityFingerprintAA0cD10DescriptorVSS_tYaKF"
+        },
+        {
+          "declaration": "protocol TransactionalBlobStoring : BlobStoring",
+          "kind": "swift.protocol",
+          "path": "TransactionalBlobStoring",
+          "preciseIdentifier": "s:11AkashicCore24TransactionalBlobStoringP"
+        },
+        {
+          "declaration": "func discard(_ stage: BlobStage) async",
+          "kind": "swift.method",
+          "path": "TransactionalBlobStoring.discard(_:)",
+          "preciseIdentifier": "s:11AkashicCore24TransactionalBlobStoringP7discardyyAA0D5StageVYaF"
+        },
+        {
+          "declaration": "func publish(_ stage: BlobStage) async throws -> BlobPublication",
+          "kind": "swift.method",
+          "path": "TransactionalBlobStoring.publish(_:)",
+          "preciseIdentifier": "s:11AkashicCore24TransactionalBlobStoringP7publishyAA0D11PublicationVAA0D5StageVYaKF"
+        },
+        {
+          "declaration": "func stage(data: Data, digest: BlobDigest, partition: CachePartitionID) async throws -> BlobStage",
+          "kind": "swift.method",
+          "path": "TransactionalBlobStoring.stage(data:digest:partition:)",
+          "preciseIdentifier": "s:11AkashicCore24TransactionalBlobStoringP5stage4data6digest9partitionAA0D5StageV10Foundation4DataV_AA0D6DigestVAA16CachePartitionIDVtYaKF"
+        }
+      ]
+    },
+    {
+      "module": "AkashicMemory",
+      "relationships": [
+        {
+          "kind": "conformsTo",
+          "source": "MemoryCache",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "MemoryCache",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "MemoryCacheRemovalSummary",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "MemoryCacheRemovalSummary",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "MemoryCacheRemovalSummary",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "MemoryCacheRemovalSummary",
+          "target": "Swift.SendableMetatype"
+        }
+      ],
+      "symbolCount": 15,
+      "symbols": [
+        {
+          "declaration": "final class MemoryCache<Key, Value> where Key : Hashable, Key : Sendable, Value : Sendable",
+          "kind": "swift.class",
+          "path": "MemoryCache",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC"
+        },
+        {
+          "declaration": "var count: Int { get }",
+          "kind": "swift.property",
+          "path": "MemoryCache.count",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC5countSivp"
+        },
+        {
+          "declaration": "var currentCost: Int { get }",
+          "kind": "swift.property",
+          "path": "MemoryCache.currentCost",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC11currentCostSivp"
+        },
+        {
+          "declaration": "init(costLimit: Int)",
+          "kind": "swift.init",
+          "path": "MemoryCache.init(costLimit:)",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC9costLimitACyxq_GSi_tcfc"
+        },
+        {
+          "declaration": "func insert(_ value: Value, for key: Key, cost: Int)",
+          "kind": "swift.method",
+          "path": "MemoryCache.insert(_:for:cost:)",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC6insert_3for4costyq__xSitF"
+        },
+        {
+          "declaration": "func remove(_ key: Key)",
+          "kind": "swift.method",
+          "path": "MemoryCache.remove(_:)",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC6removeyyxF"
+        },
+        {
+          "declaration": "func removeAll()",
+          "kind": "swift.method",
+          "path": "MemoryCache.removeAll()",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC9removeAllyyF"
+        },
+        {
+          "declaration": "func removeAll(where predicate: @Sendable (Key) -> Bool)",
+          "kind": "swift.method",
+          "path": "MemoryCache.removeAll(where:)",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC9removeAll5whereySbxYbXE_tF"
+        },
+        {
+          "declaration": "func removeAllAndReport() -> MemoryCacheRemovalSummary",
+          "kind": "swift.method",
+          "path": "MemoryCache.removeAllAndReport()",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC18removeAllAndReportAA0bC14RemovalSummaryVyF"
+        },
+        {
+          "declaration": "func updateCostLimit(_ newLimit: Int) -> MemoryCacheRemovalSummary",
+          "kind": "swift.method",
+          "path": "MemoryCache.updateCostLimit(_:)",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC15updateCostLimityAA0bC14RemovalSummaryVSiF"
+        },
+        {
+          "declaration": "func value(for key: Key) -> Value?",
+          "kind": "swift.method",
+          "path": "MemoryCache.value(for:)",
+          "preciseIdentifier": "s:13AkashicMemory0B5CacheC5value3forq_Sgx_tF"
+        },
+        {
+          "declaration": "struct MemoryCacheRemovalSummary",
+          "kind": "swift.struct",
+          "path": "MemoryCacheRemovalSummary",
+          "preciseIdentifier": "s:13AkashicMemory0B19CacheRemovalSummaryV"
+        },
+        {
+          "declaration": "let costBytes: Int",
+          "kind": "swift.property",
+          "path": "MemoryCacheRemovalSummary.costBytes",
+          "preciseIdentifier": "s:13AkashicMemory0B19CacheRemovalSummaryV9costBytesSivp"
+        },
+        {
+          "declaration": "init(itemCount: Int, costBytes: Int)",
+          "kind": "swift.init",
+          "path": "MemoryCacheRemovalSummary.init(itemCount:costBytes:)",
+          "preciseIdentifier": "s:13AkashicMemory0B19CacheRemovalSummaryV9itemCount9costBytesACSi_Sitcfc"
+        },
+        {
+          "declaration": "let itemCount: Int",
+          "kind": "swift.property",
+          "path": "MemoryCacheRemovalSummary.itemCount",
+          "preciseIdentifier": "s:13AkashicMemory0B19CacheRemovalSummaryV9itemCountSivp"
+        }
+      ]
+    },
+    {
+      "module": "AkashicDisk",
+      "relationships": [
+        {
+          "kind": "conformsTo",
+          "source": "DirectoryStoreGenerationManager",
+          "target": "AkashicCore.StoreGenerationManaging"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "DirectoryStoreGenerationManager",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "DirectoryStoreGenerationManager",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "FileBlobStore",
+          "target": "AkashicCore.BlobStoreMaintaining"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "FileBlobStore",
+          "target": "AkashicCore.BlobStoring"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "FileBlobStore",
+          "target": "AkashicCore.TransactionalBlobStoring"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "FileBlobStore",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "FileBlobStore",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "FileBlobStore",
+          "target": "_Concurrency.Actor"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "FileBlobStoreLimits",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "FileBlobStoreLimits",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "FileBlobStoreLimits",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationHandle",
+          "target": "Swift.Equatable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationHandle",
+          "target": "Swift.Hashable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationHandle",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "StoreGenerationHandle",
+          "target": "Swift.SendableMetatype"
+        }
+      ],
+      "symbolCount": 31,
+      "symbols": [
+        {
+          "declaration": "struct DirectoryStoreGenerationManager",
+          "kind": "swift.struct",
+          "path": "DirectoryStoreGenerationManager",
+          "preciseIdentifier": "s:11AkashicDisk31DirectoryStoreGenerationManagerV"
+        },
+        {
+          "declaration": "init(root: URL)",
+          "kind": "swift.init",
+          "path": "DirectoryStoreGenerationManager.init(root:)",
+          "preciseIdentifier": "s:11AkashicDisk31DirectoryStoreGenerationManagerV4rootAC10Foundation3URLV_tcfc"
+        },
+        {
+          "declaration": "func openGeneration(compatibilityFingerprint: String) async throws -> StoreGenerationDescriptor",
+          "kind": "swift.method",
+          "path": "DirectoryStoreGenerationManager.openGeneration(compatibilityFingerprint:)",
+          "preciseIdentifier": "s:11AkashicDisk31DirectoryStoreGenerationManagerV04openE024compatibilityFingerprint0A4Core0dE10DescriptorVSS_tYaKF"
+        },
+        {
+          "declaration": "func openHandle(compatibilityFingerprint: String) async throws -> StoreGenerationHandle",
+          "kind": "swift.method",
+          "path": "DirectoryStoreGenerationManager.openHandle(compatibilityFingerprint:)",
+          "preciseIdentifier": "s:11AkashicDisk31DirectoryStoreGenerationManagerV10openHandle24compatibilityFingerprintAA0deH0VSS_tYaKF"
+        },
+        {
+          "declaration": "let root: URL",
+          "kind": "swift.property",
+          "path": "DirectoryStoreGenerationManager.root",
+          "preciseIdentifier": "s:11AkashicDisk31DirectoryStoreGenerationManagerV4root10Foundation3URLVvp"
+        },
+        {
+          "declaration": "actor FileBlobStore",
+          "kind": "swift.class",
+          "path": "FileBlobStore",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC"
+        },
+        {
+          "declaration": "@discardableResult func commit(data: Data, digest: BlobDigest, partition: CachePartitionID) throws -> BlobPublication",
+          "kind": "swift.method",
+          "path": "FileBlobStore.commit(data:digest:partition:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC6commit4data6digest9partition0A4Core0D11PublicationV10Foundation4DataV_AH0D6DigestVAH16CachePartitionIDVtKF"
+        },
+        {
+          "declaration": "static let currentSchemaVersion: UInt16",
+          "kind": "swift.type.property",
+          "path": "FileBlobStore.currentSchemaVersion",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC20currentSchemaVersions6UInt16VvpZ"
+        },
+        {
+          "declaration": "func discard(_ stage: BlobStage)",
+          "kind": "swift.method",
+          "path": "FileBlobStore.discard(_:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC7discardyy0A4Core0D5StageVF"
+        },
+        {
+          "declaration": "func garbageCollect(retaining references: Set<LiveBlobReference>, limits: BlobMaintenanceLimits) async throws -> BlobMaintenanceResult",
+          "kind": "swift.method",
+          "path": "FileBlobStore.garbageCollect(retaining:limits:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC14garbageCollect9retaining6limits0A4Core0D17MaintenanceResultVShyAG04LiveD9ReferenceVG_AG0dK6LimitsVtYaKF"
+        },
+        {
+          "declaration": "static func open(root: URL, limits: FileBlobStoreLimits = FileBlobStoreLimits()) async throws -> FileBlobStore",
+          "kind": "swift.type.method",
+          "path": "FileBlobStore.open(root:limits:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC4open4root6limitsAC10Foundation3URLV_AA0cdE6LimitsVtYaKFZ"
+        },
+        {
+          "declaration": "static func open(root: URL, softLimitBytes: Int) async throws -> FileBlobStore",
+          "kind": "swift.type.method",
+          "path": "FileBlobStore.open(root:softLimitBytes:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC4open4root14softLimitBytesAC10Foundation3URLV_SitYaKFZ"
+        },
+        {
+          "declaration": "func physicalID(digest: BlobDigest, partition: CachePartitionID) -> PhysicalBlobID?",
+          "kind": "swift.method",
+          "path": "FileBlobStore.physicalID(digest:partition:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC10physicalID6digest9partition0A4Core08PhysicaldG0VSgAG0D6DigestV_AG014CachePartitionG0VtF"
+        },
+        {
+          "declaration": "func publish(_ stage: BlobStage) throws -> BlobPublication",
+          "kind": "swift.method",
+          "path": "FileBlobStore.publish(_:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC7publishy0A4Core0D11PublicationVAE0D5StageVKF"
+        },
+        {
+          "declaration": "func read(digest: BlobDigest, partition: CachePartitionID) throws -> Data",
+          "kind": "swift.method",
+          "path": "FileBlobStore.read(digest:partition:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC4read6digest9partition10Foundation4DataV0A4Core0D6DigestV_AJ16CachePartitionIDVtKF"
+        },
+        {
+          "declaration": "func remove(digest: BlobDigest, partition: CachePartitionID) throws",
+          "kind": "swift.method",
+          "path": "FileBlobStore.remove(digest:partition:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC6remove6digest9partitiony0A4Core0D6DigestV_AG16CachePartitionIDVtKF"
+        },
+        {
+          "declaration": "func removeAll(partition: CachePartitionID) throws",
+          "kind": "swift.method",
+          "path": "FileBlobStore.removeAll(partition:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC9removeAll9partitiony0A4Core16CachePartitionIDV_tKF"
+        },
+        {
+          "declaration": "func stage(data: Data, digest: BlobDigest, partition: CachePartitionID) throws -> BlobStage",
+          "kind": "swift.method",
+          "path": "FileBlobStore.stage(data:digest:partition:)",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC5stage4data6digest9partition0A4Core0D5StageV10Foundation4DataV_AH0D6DigestVAH16CachePartitionIDVtKF"
+        },
+        {
+          "declaration": "nonisolated var unownedExecutor: UnownedSerialExecutor { get }",
+          "kind": "swift.property",
+          "path": "FileBlobStore.unownedExecutor",
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC15unownedExecutorScevp"
+        },
+        {
+          "declaration": "struct FileBlobStoreLimits",
+          "kind": "swift.struct",
+          "path": "FileBlobStoreLimits",
+          "preciseIdentifier": "s:11AkashicDisk19FileBlobStoreLimitsV"
+        },
+        {
+          "declaration": "init(softTotalBytes: Int = 128 * 1024 * 1024, maximumBlobBytes: Int = 64 * 1024 * 1024, maximumDirectoryEntryCount: Int = 201_024)",
+          "kind": "swift.init",
+          "path": "FileBlobStoreLimits.init(softTotalBytes:maximumBlobBytes:maximumDirectoryEntryCount:)",
+          "preciseIdentifier": "s:11AkashicDisk19FileBlobStoreLimitsV14softTotalBytes07maximumdI00J19DirectoryEntryCountACSi_S2itcfc"
+        },
+        {
+          "declaration": "let maximumBlobBytes: Int",
+          "kind": "swift.property",
+          "path": "FileBlobStoreLimits.maximumBlobBytes",
+          "preciseIdentifier": "s:11AkashicDisk19FileBlobStoreLimitsV07maximumD5BytesSivp"
+        },
+        {
+          "declaration": "let maximumDirectoryEntryCount: Int",
+          "kind": "swift.property",
+          "path": "FileBlobStoreLimits.maximumDirectoryEntryCount",
+          "preciseIdentifier": "s:11AkashicDisk19FileBlobStoreLimitsV26maximumDirectoryEntryCountSivp"
+        },
+        {
+          "declaration": "let softTotalBytes: Int",
+          "kind": "swift.property",
+          "path": "FileBlobStoreLimits.softTotalBytes",
+          "preciseIdentifier": "s:11AkashicDisk19FileBlobStoreLimitsV14softTotalBytesSivp"
+        },
+        {
+          "declaration": "enum StoreGenerationDirectory",
+          "kind": "swift.enum",
+          "path": "StoreGenerationDirectory",
+          "preciseIdentifier": "s:11AkashicDisk24StoreGenerationDirectoryO"
+        },
+        {
+          "declaration": "static func open(root: URL, compatibilityFingerprint: String) async throws -> StoreGenerationHandle",
+          "kind": "swift.type.method",
+          "path": "StoreGenerationDirectory.open(root:compatibilityFingerprint:)",
+          "preciseIdentifier": "s:11AkashicDisk24StoreGenerationDirectoryO4open4root24compatibilityFingerprintAA0cD6HandleV10Foundation3URLV_SStYaKFZ"
+        },
+        {
+          "declaration": "struct StoreGenerationHandle",
+          "kind": "swift.struct",
+          "path": "StoreGenerationHandle",
+          "preciseIdentifier": "s:11AkashicDisk21StoreGenerationHandleV"
+        },
+        {
+          "declaration": "let compatibilityFingerprint: String",
+          "kind": "swift.property",
+          "path": "StoreGenerationHandle.compatibilityFingerprint",
+          "preciseIdentifier": "s:11AkashicDisk21StoreGenerationHandleV24compatibilityFingerprintSSvp"
+        },
+        {
+          "declaration": "var descriptor: StoreGenerationDescriptor { get throws }",
+          "kind": "swift.property",
+          "path": "StoreGenerationHandle.descriptor",
+          "preciseIdentifier": "s:11AkashicDisk21StoreGenerationHandleV10descriptor0A4Core0cD10DescriptorVvp"
+        },
+        {
+          "declaration": "let identifier: StoreGenerationID",
+          "kind": "swift.property",
+          "path": "StoreGenerationHandle.identifier",
+          "preciseIdentifier": "s:11AkashicDisk21StoreGenerationHandleV10identifier0A4Core0cD2IDVvp"
+        },
+        {
+          "declaration": "let root: URL",
+          "kind": "swift.property",
+          "path": "StoreGenerationHandle.root",
+          "preciseIdentifier": "s:11AkashicDisk21StoreGenerationHandleV4root10Foundation3URLVvp"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 1
+}
