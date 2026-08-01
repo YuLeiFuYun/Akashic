@@ -2,6 +2,15 @@
 
 Akashic 是面向 Swift/Apple 平台的技术中立缓存与 durable blob store。它不解释图片、网络请求、HTTP、账户、授权或 UI；宿主负责把自己的业务身份和策略投影为 Akashic 的 typed contract。
 
+## 开发工具链
+
+- Xcode 27.0 或更新版本；
+- Apple Swift 6.4，SwiftPM tools 6.4；
+- 运行基线仍为 iOS 15 / macOS 12；
+- `scripts/select-xcode.sh` 与 `scripts/check-swift-toolchain.py` 会拒绝旧工具链。
+- GitHub CI 显式使用 `xcode-27` preview runner，不依赖会漂移的 `macos-latest`。
+
+
 ## 产品
 
 - `AkashicCore`：`BlobDigest`、`CachePartitionID`、`PhysicalBlobID`、`StoreGenerationID`、stage/publication、维护上限与通用协议；

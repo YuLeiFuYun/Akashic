@@ -8,6 +8,7 @@ export DEVELOPER_DIR
 printf 'Using DEVELOPER_DIR=%s\n' "$DEVELOPER_DIR"
 xcodebuild -version
 xcrun swift --version
+python3 scripts/check-swift-toolchain.py
 
 scripts/verify-source-boundary.sh
 scripts/verify-privacy-manifests.sh

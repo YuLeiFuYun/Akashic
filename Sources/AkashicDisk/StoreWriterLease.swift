@@ -6,7 +6,7 @@ import Foundation
 ///
 /// `lockf` 负责跨进程排他；进程内根目录集合补足 POSIX record lock 对同一进程
 /// 多描述符不提供实例级排他的缺口。lease 析构时同时释放两层所有权。
-final class StoreWriterLease: @unchecked Sendable {
+struct StoreWriterLease: ~Copyable, @unchecked Sendable {
     private static let registryLock = NSLock()
     nonisolated(unsafe) private static var activeRoots: Set<String> = []
 
@@ -72,5 +72,26 @@ final class StoreWriterLease: @unchecked Sendable {
 
     private static func posixError() -> POSIXError {
         POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+    }
+}
+
+
+/// 在专用串行执行器上获取不可复制 writer lease，避免通过要求 `Copyable` 的
+/// continuation 泛型传递独占资源。
+actor StoreWriterLeaseAcquirer {
+    nonisolated let executor = BlockingIOExecutor(
+        label: "dev.akashic.store-writer-lease.open"
+    )
+
+    nonisolated var unownedExecutor: UnownedSerialExecutor {
+        executor.asUnownedSerialExecutor()
+    }
+
+    func acquire(root: URL) throws -> StoreWriterLease {
+        try Task.checkCancellation()
+        try StorageDirectorySecurity.prepareDirectory(root)
+        let lease = try StoreWriterLease.acquire(root: root)
+        try Task.checkCancellation()
+        return lease
     }
 }
