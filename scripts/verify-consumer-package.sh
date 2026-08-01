@@ -7,7 +7,11 @@ DEVELOPER_DIR=$($ROOT/scripts/select-xcode.sh)
 export DEVELOPER_DIR
 
 FIXTURE="$ROOT/Fixtures/ConsumerSmoke"
-rm -rf "$FIXTURE/.build"
-xcrun swift build --package-path "$FIXTURE" -c release
-"$FIXTURE/.build/release/AkashicConsumerSmoke" >/dev/null
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT HUP INT TERM
+SCRATCH="$WORK/swiftpm"
+
+xcrun swift build --package-path "$FIXTURE" --scratch-path "$SCRATCH" -c release
+BIN_DIR=$(xcrun swift build --package-path "$FIXTURE" --scratch-path "$SCRATCH" -c release --show-bin-path)
+"$BIN_DIR/AkashicConsumerSmoke" >/dev/null
 printf 'Akashic external consumer passed.\n'

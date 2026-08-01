@@ -100,7 +100,7 @@
       "status": "implemented-local-process-crash",
       "summary": "Eleven exact child-process exit points and a three-round 78-case fixed-seed random SIGKILL campaign recover only complete miss or verified hit states; three real mounted-APFS full-volume and three real APFS quota cases additionally preserve old state or converge after storage exhaustion.",
       "evidencePaths": [
-        "Sources/AkashicCrashProbe/main.swift",
+        "Sources/AkashicCrashProbe/AkashicCrashProbe.swift",
         "Sources/AkashicCore/DurableFileWriter.swift",
         "Sources/AkashicDisk/FileBlobStoreFaults.swift",
         "Tools/Crash/verify_process_crash_matrix.py",
@@ -191,7 +191,7 @@
       "status": "partial-local",
       "summary": "Three retained macOS workloads report process and logical-I/O metrics; three mounted-APFS full-volume and three APFS quota cases qualify two distinct storage-exhaustion modes. Physical I/O, stable-device and energy evidence remain absent.",
       "evidencePaths": [
-        "Sources/AkashicResourceProbe/main.swift",
+        "Sources/AkashicResourceProbe/AkashicResourceProbe.swift",
         "Tools/Resource/verify_local_resource_envelope.py",
         "scripts/verify-local-resource-envelope.sh",
         "Tools/Fault/verify_real_full_volume.py",

@@ -9,4 +9,4 @@ scripts/verify-fault-injection.sh
 scripts/verify-store-generation-contention.py
 scripts/verify-local-resource-envelope.sh
 scripts/verify-platform-matrix.sh
-printf 'Akashic local release-readiness mechanics passed; power-loss, physical-resource, remote, tag and protected CI remain blockers.\n'
+printf 'Akashic release-readiness mechanics passed; physical power-loss and stable-device resource qualification remain open.\n'

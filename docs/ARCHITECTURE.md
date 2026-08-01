@@ -83,7 +83,7 @@ stage 在 publish 前不能通过 read 或 physicalID 观察。publish/discard �
 
 ### StoreGeneration
 
-`StoreGenerationDirectory` 将兼容 fingerprint 绑定到 typed `StoreGenerationID`，通过 descriptor 与 CURRENT pointer 原子切换。未知 schema fail closed 并保留原文件。首次从 Fovea 提取使用新 generation，不复用旧嵌入格式。
+`StoreGenerationDirectory` 将兼容 fingerprint 绑定到 typed `StoreGenerationID`，通过 descriptor 与 CURRENT pointer 原子切换。未知 schema fail closed 并保留原文件。当前磁盘格式使用新 generation，不复用任何早期嵌入格式。
 
 ### 恢复与安全
 

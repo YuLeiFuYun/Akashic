@@ -6,11 +6,13 @@ cd "$ROOT"
 DEVELOPER_DIR=$($ROOT/scripts/select-xcode.sh)
 export DEVELOPER_DIR
 FIXTURE="$ROOT/Fixtures/NegativeConsumer"
-LOG="$ROOT/.build/negative-consumer.log"
-rm -rf "$FIXTURE/.build"
-mkdir -p "$ROOT/.build"
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT HUP INT TERM
+SCRATCH="$WORK/swiftpm"
+LOG="$WORK/negative-consumer.log"
+
 set +e
-xcrun swift build --package-path "$FIXTURE" -c release > "$LOG" 2>&1
+xcrun swift build --package-path "$FIXTURE" --scratch-path "$SCRATCH" -c release > "$LOG" 2>&1
 status=$?
 set -e
 if [ "$status" -eq 0 ]; then

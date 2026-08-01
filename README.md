@@ -10,7 +10,7 @@ Akashic 是面向 Swift/Apple 平台的技术中立缓存与 durable blob store�
 - `AkashicCrashProbe`：仅用于独立进程崩溃验证，不属于库 API；
 - `AkashicResourceProbe`：仅用于本地资源包络采样，不属于库 API。
 
-当前仓库是公开、可编译、可消费、可执行验证的 pre-1.0 垂直切片。核心 CI workflow 已配置，但仍没有稳定 tag、正式 required check、真机资源证据、断电证据或 Fovea 外部依赖迁移，因此不构成稳定发布。
+当前仓库是公开、可编译、可消费、可执行验证的 pre-1.0 垂直切片。核心 CI、不可变开发标签和精确提交集成已经建立；真机资源、物理断电与长期运行证据仍未完成，因此不构成稳定发布。
 
 ## 合同边界
 
@@ -38,7 +38,7 @@ BlobDigest + CachePartitionID
 - 每个 store root 只有一个活动 writer；
 - 只承诺同一 store 实例内的并发 reader；
 - future schema fail closed，不由旧实现改写；
-- cache 可重建，因此首次从 Fovea 提取使用新的 StoreGeneration。
+- cache 可重建；当前磁盘格式与早期嵌入式实现不兼容，宿主必须使用新的 `StoreGeneration`。
 
 ## 使用
 
@@ -121,7 +121,7 @@ scripts/verify-platform-matrix.sh AkashicDisk ios-device
 - 目标设备 RSS、FD、I/O bytes、metadata write amplification、reopen latency 和 energy；
 - 真正的断电、`F_FULLFSYNC` 对照和数小时级高迭代 kill-at-random 实验；
 - 多进程 reader snapshot/lease；
-- 稳定版本 tag、required-check 治理和远端 clean clone 复验；
-- Fovea typed adapter、差分 trace、W3/W8/W13 组合验证和 rollback。
+- 稳定版本、远端 clean-clone 完整复验与 current/previous 兼容矩阵；
+- Fovea 差分 trace、W3/W8/W13 组合验证和 rollback。
 
-详见 `ROADMAP.md`、`docs/ARCHITECTURE.md`、`docs/FAULT_INJECTION.md`、`docs/CONFORMANCE.md` 与 `docs/EXTRACTION_PROVENANCE.json`。
+详见 `ROADMAP.md`、`docs/ARCHITECTURE.md`、`docs/FAULT_INJECTION.md` 与 `docs/CONFORMANCE.md`。
