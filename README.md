@@ -125,3 +125,7 @@ scripts/verify-platform-matrix.sh AkashicDisk ios-device
 - Fovea 差分 trace、W3/W8/W13 组合验证和 rollback。
 
 详见 `ROADMAP.md`、`docs/ARCHITECTURE.md`、`docs/FAULT_INJECTION.md` 与 `docs/CONFORMANCE.md`。
+
+## 许可
+
+本项目采用 MIT License。详见 `LICENSE`。
