@@ -14,9 +14,7 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
     static let maximumManifestBytes = 64 * 1024 * 1024
     static let maximumManifestEntryCount = 100_000
     static let maximumSupportedBlobBytes = 1024 * 1024 * 1024
-    private static let openExecutor = BlockingIOExecutor(
-        label: "dev.akashic.file-blob-store.open"
-    )
+    private static let writerLeaseAcquirer = StoreWriterLeaseAcquirer()
 
     private struct SchemaEnvelope: Decodable {
         let schemaVersion: UInt16
@@ -65,7 +63,7 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
     private init(
         root: URL,
         limits: FileBlobStoreLimits,
-        writerLease: StoreWriterLease,
+        writerLease: consuming StoreWriterLease,
         faultInjector: @escaping FileBlobStoreFaultInjector
     ) {
         self.blobs = root.appendingPathComponent("blobs", isDirectory: true)
@@ -93,10 +91,7 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         limits: FileBlobStoreLimits = FileBlobStoreLimits(),
         faultInjector: @escaping FileBlobStoreFaultInjector
     ) async throws -> FileBlobStore {
-        let writerLease = try await openExecutor.run {
-            try StorageDirectorySecurity.prepareDirectory(root)
-            return try StoreWriterLease.acquire(root: root)
-        }
+        let writerLease = try await writerLeaseAcquirer.acquire(root: root)
         let store = FileBlobStore(
             root: root,
             limits: limits,
@@ -185,12 +180,8 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
     @discardableResult
     public func commit(data: Data, digest: BlobDigest, partition: CachePartitionID) throws -> BlobPublication {
         let stage = try stage(data: data, digest: digest, partition: partition)
-        do {
-            return try publish(stage)
-        } catch {
-            discard(stage)
-            throw error
-        }
+        defer { discard(stage) }
+        return try publish(stage)
     }
 
     /// 写入尚未进入逻辑清单的耐久数据块；此时 `read` 与 `physicalID` 不可观察它。
