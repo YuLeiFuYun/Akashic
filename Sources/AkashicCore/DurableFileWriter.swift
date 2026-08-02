@@ -100,8 +100,12 @@ package enum DurableFileWriter {
 
         var descriptorIsOpen = true
         do {
-            // 属性必须在文件同步前写入；rename 会保留同一 inode 的保护属性与扩展属性。
-            try StorageDirectorySecurity.securePublishedFile(temporary)
+            // 新文件已由 O_EXCL/O_NOFOLLOW 和 0600 创建；只在首次 fsync 前补齐
+            // 平台文件保护。父目录的备份排除覆盖其内容，rename 保留同一 inode。
+            try StorageDirectorySecurity.secureNewPrivateFile(
+                temporary,
+                descriptor: descriptor
+            )
             try writeAll(data, to: descriptor, operation: operations.write)
             try faultInjector(.afterDataWritten)
             try synchronize(descriptor, operation: operations.synchronize)

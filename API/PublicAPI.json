@@ -932,9 +932,19 @@
           "kind": "conformsTo",
           "source": "MemoryCacheRemovalSummary",
           "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "ShardedMemoryCache",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "ShardedMemoryCache",
+          "target": "Swift.SendableMetatype"
         }
       ],
-      "symbolCount": 15,
+      "symbolCount": 27,
       "symbols": [
         {
           "declaration": "final class MemoryCache<Key, Value> where Key : Hashable, Key : Sendable, Value : Sendable",
@@ -1025,6 +1035,78 @@
           "kind": "swift.property",
           "path": "MemoryCacheRemovalSummary.itemCount",
           "preciseIdentifier": "s:13AkashicMemory0B19CacheRemovalSummaryV9itemCountSivp"
+        },
+        {
+          "declaration": "final class ShardedMemoryCache<Key, Value> where Key : Hashable, Key : Sendable, Value : Sendable",
+          "kind": "swift.class",
+          "path": "ShardedMemoryCache",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC"
+        },
+        {
+          "declaration": "var costLimit: Int { get }",
+          "kind": "swift.property",
+          "path": "ShardedMemoryCache.costLimit",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC9costLimitSivp"
+        },
+        {
+          "declaration": "var count: Int { get }",
+          "kind": "swift.property",
+          "path": "ShardedMemoryCache.count",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC5countSivp"
+        },
+        {
+          "declaration": "var currentCost: Int { get }",
+          "kind": "swift.property",
+          "path": "ShardedMemoryCache.currentCost",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC11currentCostSivp"
+        },
+        {
+          "declaration": "init(costLimit: Int, shardCount: Int = 8)",
+          "kind": "swift.init",
+          "path": "ShardedMemoryCache.init(costLimit:shardCount:)",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC9costLimit10shardCountACyxq_GSi_Sitcfc"
+        },
+        {
+          "declaration": "func insert(_ value: Value, for key: Key, cost: Int)",
+          "kind": "swift.method",
+          "path": "ShardedMemoryCache.insert(_:for:cost:)",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC6insert_3for4costyq__xSitF"
+        },
+        {
+          "declaration": "func remove(_ key: Key)",
+          "kind": "swift.method",
+          "path": "ShardedMemoryCache.remove(_:)",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC6removeyyxF"
+        },
+        {
+          "declaration": "func removeAll()",
+          "kind": "swift.method",
+          "path": "ShardedMemoryCache.removeAll()",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC9removeAllyyF"
+        },
+        {
+          "declaration": "func removeAll(where predicate: @Sendable (Key) -> Bool)",
+          "kind": "swift.method",
+          "path": "ShardedMemoryCache.removeAll(where:)",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC9removeAll5whereySbxYbXE_tF"
+        },
+        {
+          "declaration": "func removeAllAndReport() -> MemoryCacheRemovalSummary",
+          "kind": "swift.method",
+          "path": "ShardedMemoryCache.removeAllAndReport()",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC18removeAllAndReportAA0bD14RemovalSummaryVyF"
+        },
+        {
+          "declaration": "func updateCostLimit(_ newLimit: Int) -> MemoryCacheRemovalSummary",
+          "kind": "swift.method",
+          "path": "ShardedMemoryCache.updateCostLimit(_:)",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC15updateCostLimityAA0bD14RemovalSummaryVSiF"
+        },
+        {
+          "declaration": "func value(for key: Key) -> Value?",
+          "kind": "swift.method",
+          "path": "ShardedMemoryCache.value(for:)",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC5value3forq_Sgx_tF"
         }
       ]
     },

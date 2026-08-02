@@ -26,8 +26,7 @@ extension FileBlobStore {
 
         var next = manifest
         for key in victims.keys { next.entries.removeValue(forKey: key) }
-        try persistManifest(next)
-        manifest = next
+        manifest = try persistManifest(next)
         for key in victims.keys { runtimeLastAccess.removeValue(forKey: key) }
 
         var firstError: (any Error)?
@@ -72,8 +71,7 @@ extension FileBlobStore {
 
         var next = manifest
         next.entries.removeValue(forKey: key)
-        try persistManifest(next)
-        manifest = next
+        manifest = try persistManifest(next)
         runtimeLastAccess.removeValue(forKey: key)
         try removeFileIfPresent(blobURL(entry.physicalID))
     }
@@ -88,8 +86,7 @@ extension FileBlobStore {
 
         var next = manifest
         for key in victims.keys { next.entries.removeValue(forKey: key) }
-        try persistManifest(next)
-        manifest = next
+        manifest = try persistManifest(next)
         for key in victims.keys { runtimeLastAccess.removeValue(forKey: key) }
 
         var firstFailure: (any Error)?
@@ -107,11 +104,10 @@ extension FileBlobStore {
         var next = manifest
         next.entries.removeValue(forKey: key)
         do {
-            try persistManifest(next)
+            manifest = try persistManifest(next)
         } catch {
             throw AkashicError.storageUnavailable
         }
-        manifest = next
         runtimeLastAccess.removeValue(forKey: key)
         try? FileManager.default.removeItem(at: blobURL)
     }
@@ -145,8 +141,7 @@ extension FileBlobStore {
             try StorageDirectorySecurity.securePublishedFile(url)
         }
         if next.entries != manifest.entries {
-            try persistManifest(next)
-            manifest = next
+            manifest = try persistManifest(next)
             for url in obsoleteBlobURLs {
                 try? fileManager.removeItem(at: url)
             }
@@ -187,7 +182,10 @@ extension FileBlobStore {
         var removed = BlobPhysicalRemovalSummary()
         for file in files {
             let name = file.lastPathComponent
-            guard name.hasPrefix(".tmp-") || !referencedNames.contains(name) else { continue }
+            if isManifestRecordName(name) { continue }
+            guard name.hasPrefix(".tmp-") || name.hasPrefix(".durable-tmp-")
+                || !referencedNames.contains(name)
+            else { continue }
             let values = try? file.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
             try fileManager.removeItem(at: file)
             if values?.isRegularFile == true {
@@ -229,8 +227,7 @@ extension FileBlobStore {
             total -= entry.byteCount
             if total <= limits.softTotalBytes { break }
         }
-        try persistManifest(next)
-        manifest = next
+        manifest = try persistManifest(next)
         for victim in victims {
             runtimeLastAccess.removeValue(forKey: victim.key)
             try? FileManager.default.removeItem(at: blobURL(victim.entry.physicalID))
@@ -240,7 +237,10 @@ extension FileBlobStore {
     func isValidManifest(_ manifest: Manifest) -> Bool {
         var physicalIDs = Set<PhysicalBlobID>()
         var totalBytes = 0
-        guard manifest.entries.count <= Self.maximumManifestEntryCount else { return false }
+        guard manifest.schemaVersion == Self.currentSchemaVersion,
+            manifest.generation > 0,
+            manifest.entries.count <= Self.maximumManifestEntryCount
+        else { return false }
         for (key, entry) in manifest.entries {
             guard entry.byteCount >= 0,
                 entry.byteCount <= Self.maximumSupportedBlobBytes,
@@ -277,30 +277,196 @@ extension FileBlobStore {
         return latest
     }
 
-    func persistManifest(_ manifest: Manifest) throws {
-        guard manifest.entries.count <= Self.maximumManifestEntryCount else {
-            throw AkashicError.storageUnavailable
+    /// 持久化清单变化。单 key 变化写固定大小增量记录；批量变化和周期检查点
+    /// 仍原子替换完整快照，从而保留 GC/removeAll 的全有或全无边界。
+    func persistManifest(_ candidate: Manifest) throws -> Manifest {
+        let next = Manifest(
+            generation: manifest.generation,
+            entries: candidate.entries
+        )
+        guard isValidManifest(next) else { throw AkashicError.storageUnavailable }
+
+        let changedKeys = Set(manifest.entries.keys).union(next.entries.keys).filter {
+            manifest.entries[$0] != next.entries[$0]
         }
-        let data = try JSONEncoder().encode(manifest)
+        guard !changedKeys.isEmpty else { return manifest }
+        guard changedKeys.count == 1, let key = changedKeys.first else {
+            return try checkpointManifest(next)
+        }
+
+        let recordURL = manifestRecordURL(for: key)
+        let createsRecord = !FileManager.default.fileExists(atPath: recordURL.path)
+        if manifestRecordCount + (createsRecord ? 1 : 0) >= Self.manifestCheckpointRecordLimit {
+            return try checkpointManifest(next)
+        }
+        let sequence = manifestRecordSequence.addingReportingOverflow(1)
+        guard !sequence.overflow else { return try checkpointManifest(next) }
+        let record = ManifestRecord(
+            generation: manifest.generation,
+            sequence: sequence.partialValue,
+            key: key,
+            entry: next.entries[key]
+        )
+        try persistManifestRecord(record, to: recordURL)
+        manifestRecordSequence = sequence.partialValue
+        if createsRecord { manifestRecordCount += 1 }
+        return next
+    }
+
+    func persistManifestSnapshot(
+        _ snapshot: Manifest,
+        injectFaults: Bool
+    ) throws {
+        guard isValidManifest(snapshot) else { throw AkashicError.storageUnavailable }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        let data = try encoder.encode(snapshot)
         guard data.count <= Self.maximumManifestBytes else {
             throw AkashicError.storageUnavailable
         }
+        let injector = faultInjector
         try DurableFileWriter.writeReplacing(
             data,
             to: manifestURL,
             faultInjector: { point in
-                switch point {
-                case .afterDataWritten:
-                    try faultInjector(.afterManifestDataWritten)
-                case .afterFileSynced:
-                    try faultInjector(.afterManifestFileSynced)
-                case .afterRename:
-                    try faultInjector(.afterManifestRenamed)
-                case .afterDirectorySynced:
-                    try faultInjector(.afterManifestDirectorySynced)
-                }
+                guard injectFaults else { return }
+                try Self.forwardManifestFault(point, to: injector)
             }
         )
+    }
+
+    func replayManifestRecords() throws {
+        let candidates = try boundedChildren(at: blobs, includingPropertiesForKeys: nil)
+            .filter { isManifestRecordName($0.lastPathComponent) }
+        var records: [ManifestRecord] = []
+        var sequences = Set<UInt64>()
+        var staleURLs: [URL] = []
+        for url in candidates {
+            let record: ManifestRecord
+            do {
+                let data = try BoundedFileReader.read(
+                    from: url,
+                    maximumBytes: Self.maximumManifestRecordBytes
+                )
+                record = try JSONDecoder().decode(ManifestRecord.self, from: data)
+            } catch {
+                throw AkashicError.invalidManifest
+            }
+            guard record.schemaVersion == ManifestRecord.currentSchemaVersion,
+                isValidManifestKey(record.key),
+                url == manifestRecordURL(for: record.key),
+                record.sequence > 0
+            else { throw AkashicError.invalidManifest }
+            if record.generation < manifest.generation {
+                staleURLs.append(url)
+                continue
+            }
+            guard record.generation == manifest.generation,
+                records.count < Self.manifestCheckpointRecordLimit,
+                sequences.insert(record.sequence).inserted
+            else { throw AkashicError.invalidManifest }
+            if let entry = record.entry {
+                guard record.key
+                    == FileBlobStoreIdentity.manifestKey(
+                        digest: entry.digest,
+                        partition: entry.partition
+                    )
+                else { throw AkashicError.invalidManifest }
+            }
+            records.append(record)
+        }
+
+        records.sort { $0.sequence < $1.sequence }
+        for record in records {
+            if let entry = record.entry {
+                manifest.entries[record.key] = entry
+            } else {
+                manifest.entries.removeValue(forKey: record.key)
+            }
+        }
+        guard isValidManifest(manifest) else { throw AkashicError.invalidManifest }
+        manifestRecordSequence = records.last?.sequence ?? 0
+        manifestRecordCount = records.count
+        for url in staleURLs { try? FileManager.default.removeItem(at: url) }
+    }
+
+    private func checkpointManifest(_ candidate: Manifest) throws -> Manifest {
+        let generation = manifest.generation.addingReportingOverflow(1)
+        guard !generation.overflow else { throw AkashicError.storageUnavailable }
+        let snapshot = Manifest(
+            generation: generation.partialValue,
+            entries: candidate.entries
+        )
+        try persistManifestSnapshot(snapshot, injectFaults: true)
+        manifestRecordSequence = 0
+        manifestRecordCount = 0
+        removeManifestRecordsBestEffort()
+        return snapshot
+    }
+
+    private func persistManifestRecord(
+        _ record: ManifestRecord,
+        to destination: URL
+    ) throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        let data = try encoder.encode(record)
+        guard data.count <= Self.maximumManifestRecordBytes else {
+            throw AkashicError.storageUnavailable
+        }
+        let injector = faultInjector
+        try DurableFileWriter.writeReplacing(
+            data,
+            to: destination,
+            faultInjector: { point in
+                try Self.forwardManifestFault(point, to: injector)
+            }
+        )
+    }
+
+    nonisolated private static func forwardManifestFault(
+        _ point: DurableFileWriteSwitchPoint,
+        to injector: FileBlobStoreFaultInjector
+    ) throws {
+        switch point {
+        case .afterDataWritten:
+            try injector(.afterManifestDataWritten)
+        case .afterFileSynced:
+            try injector(.afterManifestFileSynced)
+        case .afterRename:
+            try injector(.afterManifestRenamed)
+        case .afterDirectorySynced:
+            try injector(.afterManifestDirectorySynced)
+        }
+    }
+
+    private func manifestRecordURL(for key: String) -> URL {
+        blobs.appendingPathComponent(
+            ".manifest-entry-\(key).json",
+            isDirectory: false
+        )
+    }
+
+    private func isManifestRecordName(_ name: String) -> Bool {
+        guard name.hasPrefix(".manifest-entry-"), name.hasSuffix(".json") else {
+            return false
+        }
+        let key = String(name.dropFirst(".manifest-entry-".count).dropLast(".json".count))
+        return isValidManifestKey(key)
+    }
+
+    private func isValidManifestKey(_ key: String) -> Bool {
+        key.utf8.count == 64 && key.utf8.allSatisfy {
+            (48...57).contains($0) || (97...102).contains($0)
+        }
+    }
+
+    private func removeManifestRecordsBestEffort() {
+        guard let children = try? boundedChildren(at: blobs, includingPropertiesForKeys: nil)
+        else { return }
+        for url in children where isManifestRecordName(url.lastPathComponent) {
+            try? FileManager.default.removeItem(at: url)
+        }
     }
 
     func blobURL(_ id: PhysicalBlobID) -> URL {

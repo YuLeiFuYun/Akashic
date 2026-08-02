@@ -16,16 +16,17 @@ struct FileBlobStorePermissionTransitionTests {
                 domain: "akashic-permission-transition",
                 material: Data([0x01])
             )
+            let publicationDirectory = root.appendingPathComponent("blobs", isDirectory: true)
             var store: FileBlobStore? = try await FileBlobStore.open(
                 root: root,
                 faultInjector: { point in
                     guard point == .afterManifestFileSynced else { return }
-                    guard Darwin.chmod(root.path, mode_t(0o500)) == 0 else {
+                    guard Darwin.chmod(publicationDirectory.path, mode_t(0o500)) == 0 else {
                         throw currentPOSIXError()
                     }
                 }
             )
-            defer { _ = Darwin.chmod(root.path, mode_t(0o700)) }
+            defer { _ = Darwin.chmod(publicationDirectory.path, mode_t(0o700)) }
 
             let stage = try await store!.stage(
                 data: data,
@@ -39,7 +40,7 @@ struct FileBlobStorePermissionTransitionTests {
                 #expect(error.code == .EACCES || error.code == .EPERM)
             }
 
-            #expect(Darwin.chmod(root.path, mode_t(0o700)) == 0)
+            #expect(Darwin.chmod(publicationDirectory.path, mode_t(0o700)) == 0)
             store = nil
             let reopened = try await reopenStore(root: root)
             await expectAkashicError(.notFound) {

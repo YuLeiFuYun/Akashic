@@ -25,6 +25,21 @@ package enum StorageDirectorySecurity {
         try validateRegularFile(url)
     }
 
+    /// 安全化由调用方刚以 `O_EXCL | O_NOFOLLOW` 创建并持有的私有普通文件。
+    ///
+    /// 备份排除由已验证的父目录承担；rename 保留同一 inode。macOS 上创建模式已经
+    /// 给出完整保护，iOS 只需在首次 fsync 前补充 Data Protection 属性。
+    package static func secureNewPrivateFile(_ url: URL, descriptor: Int32) throws {
+        try validateOpenedPrivateRegularFile(descriptor)
+        #if os(iOS)
+            try FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: url.path
+            )
+        #endif
+        try validateOpenedPrivateRegularFile(descriptor)
+    }
+
     package static func validateDirectory(_ url: URL) throws {
         let status = try fileStatusWithoutFollowingLinks(at: url)
         let fileType = status.st_mode & S_IFMT

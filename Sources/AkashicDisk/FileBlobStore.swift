@@ -10,8 +10,11 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         ioExecutor.asUnownedSerialExecutor()
     }
     /// 此实现接受并写出的清单模式版本。
-    public static let currentSchemaVersion: UInt16 = 1
+    public static let currentSchemaVersion: UInt16 = 2
+    static let legacyManifestSchemaVersion: UInt16 = 1
     static let maximumManifestBytes = 64 * 1024 * 1024
+    static let maximumManifestRecordBytes = 16 * 1024
+    static let manifestCheckpointRecordLimit = 512
     static let maximumManifestEntryCount = 100_000
     static let maximumSupportedBlobBytes = 1024 * 1024 * 1024
     private static let writerLeaseAcquirer = StoreWriterLeaseAcquirer()
@@ -20,16 +23,41 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         let schemaVersion: UInt16
     }
 
+    struct LegacyManifest: Codable {
+        let schemaVersion: UInt16
+        var entries: [String: Entry]
+    }
+
     struct Manifest: Codable {
         let schemaVersion: UInt16
+        let generation: UInt64
         var entries: [String: Entry]
 
         init(
             schemaVersion: UInt16 = FileBlobStore.currentSchemaVersion,
+            generation: UInt64 = 1,
             entries: [String: Entry] = [:]
         ) {
             self.schemaVersion = schemaVersion
+            self.generation = generation
             self.entries = entries
+        }
+    }
+
+    struct ManifestRecord: Codable {
+        static let currentSchemaVersion: UInt16 = 1
+        let schemaVersion: UInt16
+        let generation: UInt64
+        let sequence: UInt64
+        let key: String
+        let entry: Entry?
+
+        init(generation: UInt64, sequence: UInt64, key: String, entry: Entry?) {
+            self.schemaVersion = Self.currentSchemaVersion
+            self.generation = generation
+            self.sequence = sequence
+            self.key = key
+            self.entry = entry
         }
     }
 
@@ -57,6 +85,8 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
     private let writerLease: StoreWriterLease
     let faultInjector: FileBlobStoreFaultInjector
     var manifest: Manifest
+    var manifestRecordSequence: UInt64 = 0
+    var manifestRecordCount: Int = 0
     var runtimeLastAccess: [String: Date] = [:]
     var pendingStages: [UUID: PendingStage] = [:]
 
@@ -124,16 +154,31 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
                 from: manifestURL,
                 maximumBytes: Self.maximumManifestBytes
             )
-            if let envelope = try? JSONDecoder().decode(SchemaEnvelope.self, from: data),
-                envelope.schemaVersion != Self.currentSchemaVersion
-            {
+            guard let envelope = try? JSONDecoder().decode(SchemaEnvelope.self, from: data)
+            else { throw AkashicError.invalidManifest }
+            switch envelope.schemaVersion {
+            case Self.legacyManifestSchemaVersion:
+                let legacy = try JSONDecoder().decode(LegacyManifest.self, from: data)
+                let migrated = Manifest(entries: legacy.entries)
+                guard isValidManifest(migrated) else {
+                    throw AkashicError.invalidManifest
+                }
+                try persistManifestSnapshot(migrated, injectFaults: false)
+                manifest = migrated
+            case Self.currentSchemaVersion:
+                let decoded = try JSONDecoder().decode(Manifest.self, from: data)
+                guard isValidManifest(decoded) else {
+                    throw AkashicError.invalidManifest
+                }
+                manifest = decoded
+                try replayManifestRecords()
+            default:
                 throw AkashicError.unsupportedSchema
             }
-            let decoded = try JSONDecoder().decode(Manifest.self, from: data)
-            guard isValidManifest(decoded) else {
-                throw AkashicError.invalidManifest
-            }
-            manifest = decoded
+        } else {
+            let initial = Manifest()
+            try persistManifestSnapshot(initial, injectFaults: false)
+            manifest = initial
         }
         try reconcileStorageAfterBootstrap()
         try trimIfNeeded()
@@ -179,6 +224,13 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
     /// 原子发布已验证字节，并在安全时修复原有损坏数据块。
     @discardableResult
     public func commit(data: Data, digest: BlobDigest, partition: CachePartitionID) throws -> BlobPublication {
+        if let publication = try commitFastPath(
+            data: data,
+            digest: digest,
+            partition: partition
+        ) {
+            return publication
+        }
         let stage = try stage(data: data, digest: digest, partition: partition)
         defer { discard(stage) }
         return try publish(stage)
@@ -269,7 +321,9 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
                     }
                 }
             )
-            try StorageDirectorySecurity.securePublishedFile(destination)
+            // DurableFileWriter 已在同一 inode 上设置保护属性并完成 rename；此处只复核
+            // 发布路径仍指向该私有普通文件，避免重复 xattr/chmod 写入放大每次提交成本。
+            try StorageDirectorySecurity.validateRegularFile(destination)
         } catch {
             try? FileManager.default.removeItem(at: destination)
             throw error
@@ -331,9 +385,9 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
             lastAccess: Date()
         )
         try faultInjector(.beforeManifestPublished)
-        try persistManifest(next)
+        let persistedManifest = try persistManifest(next)
         try faultInjector(.afterManifestPublished)
-        manifest = next
+        manifest = persistedManifest
         pendingStages.removeValue(forKey: stage.rawValue)
         if let existing = pending.existing, existing.physicalID != pending.physicalID {
             try? FileManager.default.removeItem(at: blobURL(existing.physicalID))
