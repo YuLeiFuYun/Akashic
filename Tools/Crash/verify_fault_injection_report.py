@@ -107,18 +107,18 @@ def main() -> int:
 
     if quota.get("status") != "passed":
         errors.append("real APFS quota matrix must pass")
-    if quota.get("schemaVersion") != 1:
-        errors.append("real APFS quota matrix must use schema version 1")
+    if quota.get("schemaVersion") != 2:
+        errors.append("real APFS quota matrix must use schema version 2")
     if quota.get("caseCount") != 3 or quota.get("expectedCaseCount") != 3:
         errors.append("real APFS quota matrix must pass all 3 cases")
     if quota.get("realAPFSQuotaExhaustionClaim") is not True:
         errors.append("real APFS quota matrix must establish quota exhaustion")
-    if quota.get("kernelENOSPCCaseCount") != 2:
-        errors.append("real APFS quota matrix must retain 2 kernel ENOSPC cases")
-    if quota.get("foundationMetadataPrewriteFailureCaseCount") != 1:
-        errors.append(
-            "real APFS quota matrix must retain 1 Foundation metadata prewrite failure"
-        )
+    if quota.get("kernelENOSPCCaseCount") != 3:
+        errors.append("real APFS quota matrix must retain 3 kernel ENOSPC cases")
+    if quota.get("allCasesObservedKernelENOSPC") is not True:
+        errors.append("every real APFS quota case must preserve kernel ENOSPC")
+    if quota.get("publicationFailureSurfaceCounts") != {"kernel-enospc": 1}:
+        errors.append("manifest publication must expose one direct kernel ENOSPC surface")
     if quota.get("wholeContainerFullClaim") is not False:
         errors.append("real APFS quota matrix must not claim whole-container exhaustion")
     if quota.get("physicalDeviceQualification") is not False:
@@ -129,8 +129,8 @@ def main() -> int:
     head = git("rev-parse", "HEAD")
     status = git("status", "--porcelain")
     report = {
-        "schemaVersion": 4,
-        "reportID": "AKASHIC-FAULT-INJECTION-EVIDENCE-V4",
+        "schemaVersion": 5,
+        "reportID": "AKASHIC-FAULT-INJECTION-EVIDENCE-V5",
         "status": "failed" if errors else "passed",
         "verifiedCommit": head.stdout.strip() if head.returncode == 0 else "unverified-local",
         "includesWorkingTreeChanges": status.returncode != 0 or bool(status.stdout.strip()),
@@ -203,8 +203,11 @@ def main() -> int:
             "quotaBytes": quota.get("quotaBytes"),
             "payloadBytes": quota.get("payloadBytes"),
             "kernelENOSPCCaseCount": quota.get("kernelENOSPCCaseCount"),
-            "foundationMetadataPrewriteFailureCaseCount": quota.get(
-                "foundationMetadataPrewriteFailureCaseCount"
+            "allCasesObservedKernelENOSPC": quota.get(
+                "allCasesObservedKernelENOSPC"
+            ),
+            "publicationFailureSurfaceCounts": quota.get(
+                "publicationFailureSurfaceCounts"
             ),
             "artifactSHA256": sha256(args.quota_matrix),
             "realAPFSQuotaExhaustionClaim": quota.get(
@@ -226,6 +229,7 @@ def main() -> int:
             "permissionRestorationAllowsBootstrapConvergence": not errors,
             "realAPFSFullVolumeENOSPCRecovery": not errors,
             "realAPFSQuotaExhaustionRecovery": not errors,
+            "quotaFailuresPreserveKernelENOSPC": not errors,
             "processCrashRecovery": not errors,
             "powerLossSafety": False,
             "physicalDeviceQualification": False,

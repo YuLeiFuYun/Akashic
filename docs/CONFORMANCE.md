@@ -1,6 +1,6 @@
 # Conformance status
 
-`docs/CONFORMANCE_STATUS.json` is the machine-readable status source for `AKASHIC-CT-001` through `AKASHIC-CT-030`.
+`docs/CONFORMANCE_STATUS.json` is the machine-readable status source for `AKASHIC-CT-001` through `AKASHIC-CT-044`.
 
 Current classification:
 
@@ -18,3 +18,5 @@ The status uses several non-equivalent labels:
 - `planned`: no implementation claim.
 
 Component evidence cannot close Fovea host obligations. In particular, passing Akashic Disk tests does not prove ContentID projection, HTTP record transaction, namespace revocation or final delivery degradation inside Fovea.
+
+The status rules also keep `candidateDoesNotImplyDefault=true`: implemented local evidence for an opt-in candidate does not make it the Fovea default or a release-qualified winner.

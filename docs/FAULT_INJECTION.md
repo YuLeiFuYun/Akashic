@@ -79,24 +79,19 @@ each failure boundary the verifier requires the APFS container itself to retain
 at least eight payloads of free capacity, distinguishing quota exhaustion from
 a full container.
 
-The retained cases establish three separate failure surfaces:
+The retained cases establish three separate failure boundaries:
 
-1. durable replacement and blob staging both report underlying POSIX `ENOSPC`;
-   the old destination or baseline entry remains intact and temporary files are
+1. durable replacement, blob staging and manifest publication each preserve
+   direct POSIX `ENOSPC` (`errno=28`);
+2. the old destination or baseline entry remains intact and temporary files are
    absent after recovery;
-2. after a target blob is staged and the quota is consumed, manifest
-   publication on the retained macOS/Foundation version fails earlier while
-   preparing temporary-file metadata. Foundation reports
-   `NSCocoaErrorDomain` code 512 without an underlying POSIX chain;
 3. after removing the external quota filler and reopening in a new process, the
    baseline is a verified hit, the attempted target is a miss, exactly one
    published blob remains and temporary-file count is zero.
 
-The third result is intentionally not rewritten as kernel `ENOSPC`: the
-observed API layer is part of the evidence. The report records two kernel
-`ENOSPC` cases and one Foundation metadata-prewrite failure. It fixes
-`wholeContainerFullClaim=false`, `physicalDeviceQualification=false` and
-`powerLossClaim=false`.
+Quota matrix schema 2 requires all three cases to expose kernel `ENOSPC`; fault
+aggregate V5 binds that contract. The report fixes `wholeContainerFullClaim=false`,
+`physicalDeviceQualification=false` and `powerLossClaim=false`.
 
 ## 5. Process termination
 

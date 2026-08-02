@@ -411,13 +411,7 @@ def expect_quota_manifest_failure(result: dict[str, object]) -> str:
                 f"quota manifest ENOSPC did not preserve the POSIX error chain: {result}"
             )
         return "kernel-enospc"
-    if (
-        result.get("errorDomain") == "NSCocoaErrorDomain"
-        and result.get("errorCode") == 512
-        and "errno" not in result
-    ):
-        return "foundation-metadata-prewrite-failure"
-    raise RuntimeError(f"unexpected quota manifest failure surface: {result}")
+    raise RuntimeError(f"quota manifest failure did not preserve kernel ENOSPC: {result}")
 
 
 def manifest_quota_case(
@@ -533,8 +527,8 @@ def main() -> int:
             errors.append(f"{operation.__name__}: {error}")
 
     result = {
-        "schemaVersion": 1,
-        "matrixID": "AKASHIC-REAL-APFS-QUOTA-MATRIX-V1",
+        "schemaVersion": 2,
+        "matrixID": "AKASHIC-REAL-APFS-QUOTA-MATRIX-V2",
         "status": "failed" if errors else "passed",
         "binarySHA256": sha256(binary),
         "hostPlatform": platform.platform(),
@@ -550,12 +544,19 @@ def main() -> int:
             for case in cases
             if case.get("probe", {}).get("errno") == ENOSPC
         ),
-        "foundationMetadataPrewriteFailureCaseCount": sum(
-            1
-            for case in cases
-            if case.get("publicationFailureSurface")
-            == "foundation-metadata-prewrite-failure"
-        ),
+        "allCasesObservedKernelENOSPC": all(
+            case.get("probe", {}).get("errno") == ENOSPC for case in cases
+        ) and len(cases) == len(case_functions),
+        "publicationFailureSurfaceCounts": {
+            surface: sum(
+                1 for case in cases if case.get("publicationFailureSurface") == surface
+            )
+            for surface in sorted({
+                str(case["publicationFailureSurface"])
+                for case in cases
+                if isinstance(case.get("publicationFailureSurface"), str)
+            })
+        },
         "wholeContainerFullClaim": False,
         "sparseDiskImage": True,
         "physicalDeviceQualification": False,

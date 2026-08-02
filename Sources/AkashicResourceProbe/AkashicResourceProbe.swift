@@ -18,12 +18,12 @@ private struct ProbeConfiguration {
             index += 2
         }
         guard let rootValue = values["--root"],
-            let blobCountValue = values["--blob-count"],
-            let blobBytesValue = values["--blob-bytes"],
-            let readPassesValue = values["--read-passes"],
-            let blobCount = Int(blobCountValue), blobCount > 0,
-            let blobBytes = Int(blobBytesValue), blobBytes > 0,
-            let readPasses = Int(readPassesValue), readPasses > 0
+              let blobCountValue = values["--blob-count"],
+              let blobBytesValue = values["--blob-bytes"],
+              let readPassesValue = values["--read-passes"],
+              let blobCount = Int(blobCountValue), blobCount > 0,
+              let blobBytes = Int(blobBytesValue), blobBytes > 0,
+              let readPasses = Int(readPassesValue), readPasses > 0
         else { throw ProbeError.invalidArguments }
         return ProbeConfiguration(
             root: URL(fileURLWithPath: rootValue, isDirectory: true),
@@ -57,9 +57,16 @@ private struct ResourceUsage: Codable {
 
 private struct Footprint: Codable {
     let blobBytes: Int64
+    let blobFileCount: Int
     let fileCount: Int
     let metadataBytes: Int64
+    let metadataFileCount: Int
     let totalBytes: Int64
+}
+
+private struct PopulationResult {
+    let commitNanoseconds: UInt64
+    let logicalMetadataWriteBytes: Int64
 }
 
 private struct ProbeReport: Codable {
@@ -72,8 +79,8 @@ private struct ProbeReport: Codable {
     let readPasses: Int
     let logicalPayloadBytes: Int64
     let logicalReadBytes: Int64
-    let logicalMetadataRewriteBytes: Int64
-    let metadataWriteAmplificationUpperBound: Double
+    let logicalMetadataWriteBytes: Int64
+    let logicalWriteAmplification: Double
     let commitNanoseconds: UInt64
     let reopenNanoseconds: UInt64
     let readNanoseconds: UInt64
@@ -100,16 +107,16 @@ private enum AkashicResourceProbe {
         let inputs = try makeInputs(configuration)
 
         var maximumFDs = sampledOpenFileDescriptors()
-        let commitStarted = DispatchTime.now().uptimeNanoseconds
-        let metadataRewriteBytes = try await populate(
+        let population = try await populate(
             root: configuration.root,
             inputs: inputs,
             softLimitBytes: logicalPayloadBytes,
             maximumFDs: &maximumFDs
         )
-        let commitNanoseconds = DispatchTime.now().uptimeNanoseconds &- commitStarted
 
-        for _ in 0..<64 { await Task.yield() }
+        for _ in 0 ..< 64 {
+            await Task.yield()
+        }
         let reopenStarted = DispatchTime.now().uptimeNanoseconds
         let reopened = try await FileBlobStore.open(
             root: configuration.root,
@@ -119,7 +126,7 @@ private enum AkashicResourceProbe {
         maximumFDs = max(maximumFDs, sampledOpenFileDescriptors())
 
         let readStarted = DispatchTime.now().uptimeNanoseconds
-        for _ in 0..<configuration.readPasses {
+        for _ in 0 ..< configuration.readPasses {
             for input in inputs {
                 let restored = try await reopened.read(
                     digest: input.digest,
@@ -136,11 +143,12 @@ private enum AkashicResourceProbe {
         )
         let footprint = try measureFootprint(root: configuration.root)
         let usage = try processUsage(sampledOpenFileDescriptors: maximumFDs)
-        let amplification = Double(logicalPayloadBytes + metadataRewriteBytes)
-            / Double(logicalPayloadBytes)
+        let amplification = Double(
+            logicalPayloadBytes + population.logicalMetadataWriteBytes
+        ) / Double(logicalPayloadBytes)
 
         let report = ProbeReport(
-            schemaVersion: 1,
+            schemaVersion: 2,
             workloadID: "blob-\(configuration.blobCount)x\(configuration.blobBytes)-read-\(configuration.readPasses)",
             architecture: architectureName,
             operatingSystemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
@@ -149,9 +157,9 @@ private enum AkashicResourceProbe {
             readPasses: configuration.readPasses,
             logicalPayloadBytes: logicalPayloadBytes,
             logicalReadBytes: logicalReadBytes,
-            logicalMetadataRewriteBytes: metadataRewriteBytes,
-            metadataWriteAmplificationUpperBound: amplification,
-            commitNanoseconds: commitNanoseconds,
+            logicalMetadataWriteBytes: population.logicalMetadataWriteBytes,
+            logicalWriteAmplification: amplification,
+            commitNanoseconds: population.commitNanoseconds,
             reopenNanoseconds: reopenNanoseconds,
             readNanoseconds: readNanoseconds,
             footprint: footprint,
@@ -165,7 +173,7 @@ private enum AkashicResourceProbe {
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        FileHandle.standardOutput.write(try encoder.encode(report))
+        try FileHandle.standardOutput.write(encoder.encode(report))
         FileHandle.standardOutput.write(Data([0x0A]))
     }
 
@@ -179,11 +187,11 @@ private enum AkashicResourceProbe {
     private static func makeInputs(_ configuration: ProbeConfiguration) throws -> [InputBlob] {
         var result: [InputBlob] = []
         result.reserveCapacity(configuration.blobCount)
-        for index in 0..<configuration.blobCount {
+        for index in 0 ..< configuration.blobCount {
             var data = Data(count: configuration.blobBytes)
             data.withUnsafeMutableBytes { rawBuffer in
                 let bytes = rawBuffer.bindMemory(to: UInt8.self)
-                for offset in 0..<bytes.count {
+                for offset in 0 ..< bytes.count {
                     bytes[offset] = UInt8(truncatingIfNeeded: (index &* 131) ^ offset)
                 }
             }
@@ -207,27 +215,41 @@ private enum AkashicResourceProbe {
         inputs: [InputBlob],
         softLimitBytes: Int64,
         maximumFDs: inout Int
-    ) async throws -> Int64 {
+    ) async throws -> PopulationResult {
         guard softLimitBytes <= Int64(Int.max) else { throw ProbeError.arithmeticOverflow }
+        let openStarted = DispatchTime.now().uptimeNanoseconds
         let store = try await FileBlobStore.open(
             root: root,
             softLimitBytes: Int(softLimitBytes)
         )
-        var metadataRewriteBytes: Int64 = 0
-        let manifest = root.appendingPathComponent("manifest.json", isDirectory: false)
+        var commitNanoseconds = DispatchTime.now().uptimeNanoseconds &- openStarted
+        var previousMetadata = try metadataSnapshot(root: root)
+        var logicalMetadataWriteBytes = try previousMetadata.values.reduce(Int64(0)) {
+            try checkedSum($0, Int64($1.count))
+        }
         for input in inputs {
+            let commitStarted = DispatchTime.now().uptimeNanoseconds
             _ = try await store.commit(
                 data: input.data,
                 digest: input.digest,
                 partition: input.partition
             )
-            metadataRewriteBytes = try checkedSum(
-                metadataRewriteBytes,
-                regularFileSize(manifest)
-            )
+            commitNanoseconds &+= DispatchTime.now().uptimeNanoseconds &- commitStarted
+
+            let currentMetadata = try metadataSnapshot(root: root)
+            for (path, data) in currentMetadata where previousMetadata[path] != data {
+                logicalMetadataWriteBytes = try checkedSum(
+                    logicalMetadataWriteBytes,
+                    Int64(data.count)
+                )
+            }
+            previousMetadata = currentMetadata
             maximumFDs = max(maximumFDs, sampledOpenFileDescriptors())
         }
-        return metadataRewriteBytes
+        return PopulationResult(
+            commitNanoseconds: commitNanoseconds,
+            logicalMetadataWriteBytes: logicalMetadataWriteBytes
+        )
     }
 
     private static func measureFootprint(root: URL) throws -> Footprint {
@@ -238,31 +260,50 @@ private enum AkashicResourceProbe {
             errorHandler: { _, _ in false }
         ) else { throw ProbeError.resourceSampleFailed }
         var blobBytes: Int64 = 0
+        var blobFileCount = 0
         var metadataBytes: Int64 = 0
-        var fileCount = 0
+        var metadataFileCount = 0
         for case let url as URL in enumerator {
             let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
             guard values.isRegularFile == true else { continue }
             let size = Int64(values.fileSize ?? 0)
-            fileCount += 1
-            if url.deletingLastPathComponent().lastPathComponent == "blobs" {
+            if isBlobPayloadFile(url) {
                 blobBytes = try checkedSum(blobBytes, size)
+                blobFileCount += 1
             } else {
                 metadataBytes = try checkedSum(metadataBytes, size)
+                metadataFileCount += 1
             }
         }
-        return Footprint(
+        return try Footprint(
             blobBytes: blobBytes,
-            fileCount: fileCount,
+            blobFileCount: blobFileCount,
+            fileCount: blobFileCount + metadataFileCount,
             metadataBytes: metadataBytes,
-            totalBytes: try checkedSum(blobBytes, metadataBytes)
+            metadataFileCount: metadataFileCount,
+            totalBytes: checkedSum(blobBytes, metadataBytes)
         )
     }
 
-    private static func regularFileSize(_ url: URL) throws -> Int64 {
-        let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
-        guard values.isRegularFile == true else { throw ProbeError.resourceSampleFailed }
-        return Int64(values.fileSize ?? 0)
+    private static func metadataSnapshot(root: URL) throws -> [String: Data] {
+        guard let enumerator = FileManager.default.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsPackageDescendants],
+            errorHandler: { _, _ in false }
+        ) else { throw ProbeError.resourceSampleFailed }
+        var result: [String: Data] = [:]
+        for case let url as URL in enumerator {
+            let values = try url.resourceValues(forKeys: [.isRegularFileKey])
+            guard values.isRegularFile == true, !isBlobPayloadFile(url) else { continue }
+            result[url.path] = try Data(contentsOf: url)
+        }
+        return result
+    }
+
+    private static func isBlobPayloadFile(_ url: URL) -> Bool {
+        url.deletingLastPathComponent().lastPathComponent == "blobs"
+            && UUID(uuidString: url.lastPathComponent) != nil
     }
 
     private static func processUsage(sampledOpenFileDescriptors: Int) throws -> ResourceUsage {
@@ -283,14 +324,16 @@ private enum AkashicResourceProbe {
             return -1
         }
         return names.reduce(into: 0) { count, name in
-            if Int(name) != nil { count += 1 }
+            if Int(name) != nil {
+                count += 1
+            }
         }
     }
 
     private static func timevalNanoseconds(_ value: timeval) -> UInt64 {
         let seconds = UInt64(max(0, value.tv_sec))
         let microseconds = UInt64(max(0, value.tv_usec))
-        return seconds &* 1_000_000_000 &+ microseconds &* 1_000
+        return seconds &* 1_000_000_000 &+ microseconds &* 1000
     }
 
     private static func checkedProduct(_ lhs: Int, _ rhs: Int) throws -> Int64 {

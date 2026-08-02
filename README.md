@@ -14,7 +14,7 @@ Akashic 是面向 Swift/Apple 平台的技术中立缓存与 durable blob store�
 ## 产品
 
 - `AkashicCore`：`BlobDigest`、`CachePartitionID`、`PhysicalBlobID`、`StoreGenerationID`、stage/publication、维护上限与通用协议；
-- `AkashicMemory`：同步、线程安全、按成本设限的 SIEVE 内存缓存；
+- `AkashicMemory`：同步、线程安全、按成本设限的单锁 SIEVE 参考缓存，以及可配置分片数的 SIEVE 候选；当前 Fovea V4 测量配置使用 8 分片；16/32 分片因 fresh-key 热集保留失败被拒绝，8 分片在 20-process scope-all 正式 campaign 中通过全部 13 个适用支配比较；公开 revision、Fovea 精确 pin 与 trusted CI 仍待完成；
 - `AkashicDisk`：partition 隔离、stage/publish/discard、单 writer、generation、损坏隔离、文件系统防御与有界恢复；
 - `AkashicCrashProbe`：仅用于独立进程崩溃验证，不属于库 API；
 - `AkashicResourceProbe`：仅用于本地资源包络采样，不属于库 API。
@@ -86,17 +86,17 @@ let restored = try await disk.read(digest: digest, partition: partition)
 
 当前本地证据包括：
 
-- 41 项 Swift Testing 测试：Core 12、Memory 7、Disk 22；
+- 55 项 Swift Testing 测试：Core 12、Memory 15、Disk 28；
 - 8 项 `write/fsync/close/rename` syscall 行为测试、1 项真实权限迁移、3 项真实挂载 APFS 满卷恢复和 3 项真实 APFS quota 恢复案例；
 - 11 个精确子进程 crash switch points，以及 3 轮共 78 个固定种子的随机 `SIGKILL` 案例；
 - 12 个并发进程竞争同一 store generation，必须收敛到唯一 generation ID；
 - 6 个 Release 平台案例：Disk/Memory × macOS 12、iOS 15 Simulator、iOS 15 device；
-- 3 个本地 macOS 资源 workload：峰值 RSS、采样 FD、逻辑读写、manifest 重写、footprint 与 reopen latency；
+- 3 个本地 macOS 资源 workload：峰值 RSS、采样 FD、逻辑 payload/read、增量 metadata 写入、payload/metadata 分离 footprint 与 reopen latency；
 - 三产品外部 SwiftPM consumer；
-- 128 个库公共符号 baseline、领域词汇门与 package-only crash hook 负向编译门；
+- 140 个库公共符号 baseline、领域词汇门与 package-only crash hook 负向编译门；
 - Privacy Manifest、源码结构、稳定 source identity 与无 Git/无构建缓存的 clean-copy 重放门。
 
-故障报告明确写入 `powerLossClaim=false`。真实满卷门使用普通用户可挂载的 64 MiB APFS 稀疏磁盘映像，并确认底层替换、blob stage 与 manifest publication 均真实观察到内核 `ENOSPC`。独立 quota 门在 1 GiB APFS 容器中创建 64 MiB 配额卷，要求失败时容器仍保有远大于 payload 的自由空间；durable replacement 与 blob stage 返回内核 `ENOSPC`，manifest publication 在当前 Foundation 上先返回 `NSCocoaErrorDomain` 512，随后重开仍必须清除未发布状态。两类门都不是物理设备或断电资格。精确 `_exit` 与随机 `SIGKILL` 同样不能证明设备断电、文件系统控制器持久化或 APFS 在所有硬件上的 power-loss 行为。资源报告固定 `physicalIOBytes=false`、`physicalDevice=false` 和 `energy=false`；它测量的是当前 macOS 进程与应用层逻辑字节，不是物理 I/O 或真机资格。
+故障报告明确写入 `powerLossClaim=false`。真实满卷门使用普通用户可挂载的 64 MiB APFS 稀疏磁盘映像，并确认底层替换、blob stage 与 manifest publication 均真实观察到内核 `ENOSPC`。独立 quota 门在 1 GiB APFS 容器中创建 64 MiB 配额卷，要求失败时容器仍保有远大于 payload 的自由空间；durable replacement、blob stage 与 manifest publication 均直接保留内核 `ENOSPC`，随后重开仍必须清除未发布状态。两类门都不是物理设备或断电资格。精确 `_exit` 与随机 `SIGKILL` 同样不能证明设备断电、文件系统控制器持久化或 APFS 在所有硬件上的 power-loss 行为。资源报告固定 `physicalIOBytes=false`、`physicalDevice=false` 和 `energy=false`；它测量的是当前 macOS 进程与应用层逻辑字节，不是物理 I/O 或真机资格。
 
 ## 验证
 

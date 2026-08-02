@@ -72,7 +72,7 @@ def validate(case: dict[str, int], report: dict[str, Any]) -> list[str]:
         if not condition:
             errors.append(f"{label}: {message}")
 
-    require(report.get("schemaVersion") == 1, "unexpected schemaVersion")
+    require(report.get("schemaVersion") == 2, "unexpected schemaVersion")
     require(report.get("blobCount") == case["blobCount"], "blob count drifted")
     require(report.get("blobBytes") == case["blobBytes"], "blob size drifted")
     require(report.get("readPasses") == case["readPasses"], "read passes drifted")
@@ -81,18 +81,27 @@ def validate(case: dict[str, int], report: dict[str, Any]) -> list[str]:
 
     footprint = report.get("footprint", {})
     require(footprint.get("blobBytes") == payload, "final blob footprint differs from payload")
+    require(footprint.get("blobFileCount") == case["blobCount"], "blob file count drifted")
     require(footprint.get("metadataBytes", -1) >= 0, "metadata footprint is invalid")
-    require(footprint.get("fileCount", 0) >= case["blobCount"] + 1, "file count is incomplete")
+    require(
+        footprint.get("metadataFileCount", 0) >= case["blobCount"] + 1,
+        "metadata file count is incomplete",
+    )
+    require(
+        footprint.get("fileCount")
+        == footprint.get("blobFileCount", 0) + footprint.get("metadataFileCount", 0),
+        "file count accounting is inconsistent",
+    )
     require(
         footprint.get("totalBytes")
         == footprint.get("blobBytes", 0) + footprint.get("metadataBytes", 0),
         "total footprint accounting is inconsistent",
     )
 
-    metadata_rewrite = report.get("logicalMetadataRewriteBytes", -1)
-    require(metadata_rewrite >= footprint.get("metadataBytes", 0), "metadata rewrite accounting is too small")
-    amplification = report.get("metadataWriteAmplificationUpperBound")
-    expected_amplification = (payload + metadata_rewrite) / payload
+    metadata_write = report.get("logicalMetadataWriteBytes", -1)
+    require(metadata_write >= footprint.get("metadataBytes", 0), "metadata write accounting is too small")
+    amplification = report.get("logicalWriteAmplification")
+    expected_amplification = (payload + metadata_write) / payload
     require(
         isinstance(amplification, (int, float))
         and math.isfinite(amplification)
@@ -147,8 +156,8 @@ def main() -> int:
 
     identity = capture_source_identity()
     result = {
-        "schemaVersion": 1,
-        "matrixID": "AKASHIC-LOCAL-RESOURCE-ENVELOPE-V1",
+        "schemaVersion": 2,
+        "matrixID": "AKASHIC-LOCAL-RESOURCE-ENVELOPE-V2",
         "status": "failed" if errors else "passed",
         "sourceIdentitySHA256": identity["sourceIdentitySHA256"],
         "binarySHA256": sha256(BINARY),

@@ -1,104 +1,90 @@
 {
-  "schemaVersion": 1,
-  "statusID": "AKASHIC-CONFORMANCE-STATUS-V1",
-  "reviewedOn": "2026-07-31",
-  "scope": "local-independent-package",
-  "rules": {
-    "componentEvidenceDoesNotReplaceFoveaHostEvidence": true,
-    "processCrashDoesNotImplyPowerLoss": true,
-    "partialIsNotComplete": true,
-    "releaseQualified": false,
-    "syscallFaultEvidenceDoesNotImplyFullFilesystemFaultCoverage": true
-  },
   "obligations": [
     {
-      "id": "AKASHIC-CT-001",
-      "status": "implemented-local",
-      "summary": "BlobDigest canonical SHA-256 encoding and JSON round trip pass.",
       "evidencePaths": [
         "Tests/AkashicCoreTests/BlobIdentityTests.swift",
         "Sources/AkashicCore/BlobIdentity.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-001",
+      "status": "implemented-local",
+      "summary": "BlobDigest canonical SHA-256 encoding and JSON round trip pass."
     },
     {
-      "id": "AKASHIC-CT-002",
-      "status": "implemented-local",
-      "summary": "Malformed algorithm, digest, hex and byte-count forms fail closed.",
       "evidencePaths": [
         "Tests/AkashicCoreTests/BlobIdentityTests.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-002",
+      "status": "implemented-local",
+      "summary": "Malformed algorithm, digest, hex and byte-count forms fail closed."
     },
     {
-      "id": "AKASHIC-CT-003",
-      "status": "implemented-local",
-      "summary": "Partition construction is fixed-width, domain separated and has no public business-string initializer.",
       "evidencePaths": [
         "Tests/AkashicCoreTests/BlobIdentityTests.swift",
         "Tools/API/verify_contract_boundary.py",
         "API/PublicAPI.json"
-      ]
+      ],
+      "id": "AKASHIC-CT-003",
+      "status": "implemented-local",
+      "summary": "Partition construction is fixed-width, domain separated and has no public business-string initializer."
     },
     {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+      ],
       "id": "AKASHIC-CT-004",
       "status": "implemented-local",
-      "summary": "Same digest in two partitions has isolated visibility and removal authority.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
-      ]
+      "summary": "Same digest in two partitions has isolated visibility and removal authority."
     },
     {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+      ],
       "id": "AKASHIC-CT-005",
       "status": "implemented-local",
-      "summary": "Staged bytes remain invisible to read and physicalID before publish.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
-      ]
+      "summary": "Staged bytes remain invisible to read and physicalID before publish."
     },
     {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+      ],
       "id": "AKASHIC-CT-006",
       "status": "implemented-local",
-      "summary": "Publish has one terminal transition and duplicate publish returns transaction conflict.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
-      ]
+      "summary": "Publish has one terminal transition and duplicate publish returns transaction conflict."
     },
     {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+      ],
       "id": "AKASHIC-CT-007",
       "status": "implemented-local",
-      "summary": "Discard is idempotent and a discarded stage cannot later publish.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
-      ]
+      "summary": "Discard is idempotent and a discarded stage cannot later publish."
     },
     {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+      ],
       "id": "AKASHIC-CT-008",
       "status": "implemented-local",
-      "summary": "Duplicate verified commit in one partition reuses one physical blob.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
-      ]
+      "summary": "Duplicate verified commit in one partition reuses one physical blob."
     },
     {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+      ],
       "id": "AKASHIC-CT-009",
       "status": "implemented-local",
-      "summary": "Equal digest in different partitions creates distinct physical blobs.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
-      ]
+      "summary": "Equal digest in different partitions creates distinct physical blobs."
     },
     {
-      "id": "AKASHIC-CT-010",
-      "status": "implemented-local",
-      "summary": "Store recomputes and verifies digest before publication.",
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Sources/AkashicDisk/FileBlobStoreIdentity.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-010",
+      "status": "implemented-local",
+      "summary": "Store recomputes and verifies digest before publication."
     },
     {
-      "id": "AKASHIC-CT-011",
-      "status": "implemented-local-process-crash",
-      "summary": "Eleven exact child-process exit points and a three-round 78-case fixed-seed random SIGKILL campaign recover only complete miss or verified hit states; three real mounted-APFS full-volume and three real APFS quota cases additionally preserve old state or converge after storage exhaustion.",
       "evidencePaths": [
         "Sources/AkashicCrashProbe/AkashicCrashProbe.swift",
         "Sources/AkashicCore/DurableFileWriter.swift",
@@ -112,21 +98,21 @@
         "scripts/verify-real-full-volume.sh",
         "Tools/Fault/verify_real_quota.py",
         "scripts/verify-real-apfs-quota.sh"
-      ]
+      ],
+      "id": "AKASHIC-CT-011",
+      "status": "implemented-local-process-crash",
+      "summary": "Eleven exact child-process exit points and a three-round 78-case fixed-seed random SIGKILL campaign recover only complete miss or verified hit states; full-volume and quota matrices each pass three real APFS cases, with quota schema 2 preserving kernel ENOSPC at all three boundaries."
     },
     {
-      "id": "AKASHIC-CT-012",
-      "status": "implemented-local",
-      "summary": "Future manifest, pointer and descriptor schemas fail closed and remain unmodified.",
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Tests/AkashicDiskTests/StoreGenerationTests.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-012",
+      "status": "implemented-local",
+      "summary": "Future manifest, pointer and descriptor schemas fail closed and remain unmodified."
     },
     {
-      "id": "AKASHIC-CT-013",
-      "status": "implemented-local-process-crash",
-      "summary": "Exact and random process termination, a real permission transition, full mounted-APFS exhaustion and APFS quota exhaustion remove unpublished blobs and durable temporary files on reopen while preserving published blobs.",
       "evidencePaths": [
         "Sources/AkashicCore/BoundedDirectoryReader.swift",
         "Sources/AkashicDisk/FileBlobStoreMaintenance.swift",
@@ -137,59 +123,59 @@
         "Tools/Fault/verify_real_full_volume.py",
         "Tools/Fault/verify_real_quota.py",
         "scripts/verify-real-apfs-quota.sh"
-      ]
+      ],
+      "id": "AKASHIC-CT-013",
+      "status": "implemented-local-process-crash",
+      "summary": "Exact and random process termination, a real permission transition, full mounted-APFS exhaustion and quota schema 2 remove unpublished blobs and durable temporary files on reopen while preserving published blobs and direct kernel ENOSPC."
     },
     {
-      "id": "AKASHIC-CT-014",
-      "status": "implemented-local",
-      "summary": "Generation directory, descriptor, staged pointer and published pointer switch points recover to one complete compatible generation.",
       "evidencePaths": [
         "Tests/AkashicDiskTests/StoreGenerationTests.swift",
         "Sources/AkashicDisk/StoreGenerationDirectory.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-014",
+      "status": "implemented-local",
+      "summary": "Generation directory, descriptor, staged pointer and published pointer switch points recover to one complete compatible generation."
     },
     {
-      "id": "AKASHIC-CT-015",
-      "status": "implemented-local",
-      "summary": "External delete, truncate and same-length digest corruption produce quarantine and later miss.",
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-015",
+      "status": "implemented-local",
+      "summary": "External delete, truncate and same-length digest corruption produce quarantine and later miss."
     },
     {
-      "id": "AKASHIC-CT-016",
-      "status": "partial-static-and-local",
-      "summary": "Symlink, hardlink, wrong file type, unsafe mode and live parent-directory permission transition tests pass; owner checks exist in code but a different-owner fixture is not produced locally.",
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Tests/AkashicDiskTests/FileBlobStorePermissionTransitionTests.swift",
         "Sources/AkashicCore/StorageDirectorySecurity.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-016",
+      "status": "partial-static-and-local",
+      "summary": "Symlink, hardlink, wrong file type, unsafe mode and live parent-directory permission transition tests pass; owner checks exist in code but a different-owner fixture is not produced locally."
     },
     {
-      "id": "AKASHIC-CT-017",
-      "status": "implemented-local",
-      "summary": "Physical locator is a typed UUID and cannot carry a path string.",
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Sources/AkashicCore/BlobIdentity.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-017",
+      "status": "implemented-local",
+      "summary": "Physical locator is a typed UUID and cannot carry a path string."
     },
     {
-      "id": "AKASHIC-CT-018",
-      "status": "implemented-local",
-      "summary": "Reference count, referenced-byte totals and direct directory entry counts fail before mutation or unbounded collection; a retained low-limit overflow fixture exercises the POSIX enumeration bound.",
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Sources/AkashicCore/BoundedDirectoryReader.swift",
         "Sources/AkashicDisk/FileBlobStoreLimits.swift",
         "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-018",
+      "status": "implemented-local",
+      "summary": "Reference count, referenced-byte totals and direct directory entry counts fail before mutation or unbounded collection; a retained low-limit overflow fixture exercises the POSIX enumeration bound."
     },
     {
-      "id": "AKASHIC-CT-019",
-      "status": "partial-local",
-      "summary": "Three retained macOS workloads report process and logical-I/O metrics; three mounted-APFS full-volume and three APFS quota cases qualify two distinct storage-exhaustion modes. Physical I/O, stable-device and energy evidence remain absent.",
       "evidencePaths": [
         "Sources/AkashicResourceProbe/AkashicResourceProbe.swift",
         "Tools/Resource/verify_local_resource_envelope.py",
@@ -198,78 +184,78 @@
         "scripts/verify-real-full-volume.sh",
         "Tools/Fault/verify_real_quota.py",
         "scripts/verify-real-apfs-quota.sh"
-      ]
+      ],
+      "id": "AKASHIC-CT-019",
+      "status": "partial-local",
+      "summary": "Resource schema 2 runs three retained macOS workloads with separate UUID payload and incremental-metadata footprint accounting; full-volume and APFS quota matrices qualify two storage-exhaustion modes. Physical I/O, stable-device and energy evidence remain absent."
     },
     {
-      "id": "AKASHIC-CT-020",
-      "status": "implemented-local-cross-process-lock",
-      "summary": "Same-process registry and kernel lockf exclusion pass; external lock probe fails while writer is active and succeeds after release.",
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Sources/AkashicDisk/StoreWriterLease.swift"
-      ]
+      ],
+      "id": "AKASHIC-CT-020",
+      "status": "implemented-local-cross-process-lock",
+      "summary": "Same-process registry and kernel lockf exclusion pass; external lock probe fails while writer is active and succeeds after release."
     },
     {
-      "id": "AKASHIC-CT-021",
-      "status": "implemented-local-scope-limited",
-      "summary": "Concurrent readers in one store instance return stable bytes; no multi-process reader guarantee is claimed.",
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "docs/ARCHITECTURE.md"
-      ]
+      ],
+      "id": "AKASHIC-CT-021",
+      "status": "implemented-local-scope-limited",
+      "summary": "Concurrent readers in one store instance return stable bytes; no multi-process reader guarantee is claimed."
     },
     {
+      "evidencePaths": [],
       "id": "AKASHIC-CT-022",
       "status": "planned",
-      "summary": "Fovea ContentID to BlobDigest adapter equivalence is not implemented.",
-      "evidencePaths": []
+      "summary": "Fovea ContentID to BlobDigest adapter equivalence is not implemented."
     },
     {
+      "evidencePaths": [],
       "id": "AKASHIC-CT-023",
       "status": "planned",
-      "summary": "Fovea record publication failure and orphan composition test is not implemented.",
-      "evidencePaths": []
+      "summary": "Fovea record publication failure and orphan composition test is not implemented."
     },
     {
+      "evidencePaths": [],
       "id": "AKASHIC-CT-024",
       "status": "planned",
-      "summary": "Fovea revoke versus late publication composition test is not implemented.",
-      "evidencePaths": []
+      "summary": "Fovea revoke versus late publication composition test is not implemented."
     },
     {
+      "evidencePaths": [],
       "id": "AKASHIC-CT-025",
       "status": "planned",
-      "summary": "Fovea nonpersistent final delivery under cache write failure is not implemented against the independent package.",
-      "evidencePaths": []
+      "summary": "Fovea nonpersistent final delivery under cache write failure is not implemented against the independent package."
     },
     {
+      "evidencePaths": [],
       "id": "AKASHIC-CT-026",
       "status": "planned",
-      "summary": "Adversarial custom-store host identity test is not implemented.",
-      "evidencePaths": []
+      "summary": "Adversarial custom-store host identity test is not implemented."
     },
     {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/MemoryCacheTests.swift",
+        "Sources/AkashicMemory/MemoryCache.swift"
+      ],
       "id": "AKASHIC-CT-027",
       "status": "implemented-local",
-      "summary": "MemoryCache matches an independent SIEVE model across 32 deterministic 800-step traces including limit changes, and a 16-worker generated commuting concurrent history matches its reference final state.",
+      "summary": "MemoryCache matches an independent SIEVE model across 32 deterministic 800-step traces including limit changes, and a 16-worker generated commuting concurrent history matches its reference final state."
+    },
+    {
       "evidencePaths": [
         "Tests/AkashicMemoryTests/MemoryCacheTests.swift",
         "Sources/AkashicMemory/MemoryCache.swift"
-      ]
-    },
-    {
+      ],
       "id": "AKASHIC-CT-028",
       "status": "implemented-local",
-      "summary": "Purge and atomic cost-limit changes report exact removed item and byte cost, expansion removes nothing, contraction follows SIEVE state, and oversized entries remain rejected.",
-      "evidencePaths": [
-        "Tests/AkashicMemoryTests/MemoryCacheTests.swift",
-        "Sources/AkashicMemory/MemoryCache.swift"
-      ]
+      "summary": "Purge and atomic cost-limit changes report exact removed item and byte cost, expansion removes nothing, contraction follows SIEVE state, and oversized entries remain rejected."
     },
     {
-      "id": "AKASHIC-CT-029",
-      "status": "implemented-local",
-      "summary": "Independent Core, Memory and Disk imports pass in an external consumer; the public symbol baseline and source boundary pass, while a retained negative consumer cannot access package-only crash hooks.",
       "evidencePaths": [
         "Fixtures/ConsumerSmoke/Package.swift",
         "Fixtures/NegativeConsumer/Package.swift",
@@ -277,13 +263,156 @@
         "Tools/API/verify_contract_boundary.py",
         "scripts/verify-consumer-package.sh",
         "scripts/verify-negative-consumer.sh"
-      ]
+      ],
+      "id": "AKASHIC-CT-029",
+      "status": "implemented-local",
+      "summary": "Independent Core, Memory and Disk imports pass in an external consumer; the public symbol baseline and source boundary pass, while a retained negative consumer cannot access package-only crash hooks."
     },
     {
+      "evidencePaths": [],
       "id": "AKASHIC-CT-030",
       "status": "planned",
-      "summary": "Released current/previous Fovea and Akashic compatibility matrix cannot exist before stable release identities.",
-      "evidencePaths": []
+      "summary": "Released current/previous Fovea and Akashic compatibility matrix cannot exist before stable release identities."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-031",
+      "status": "implemented-local",
+      "summary": "A legacy flat schema-1 manifest is migrated to a generation snapshot without losing verified visibility."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift"
+      ],
+      "id": "AKASHIC-CT-032",
+      "status": "implemented-local",
+      "summary": "Per-key incremental manifest records replay after writer release and store reopen."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-033",
+      "status": "implemented-local",
+      "summary": "An incremental tombstone remains a miss after reopen and cannot resurrect the removed key."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-034",
+      "status": "implemented-local",
+      "summary": "A corrupt incremental manifest record fails closed as AkashicError.invalidManifest rather than leaking decoder errors."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-035",
+      "status": "implemented-local",
+      "summary": "Multi-key maintenance emits a complete generation checkpoint and removes obsolete incremental records."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-036",
+      "status": "implemented-local",
+      "summary": "A stale incremental record from an older generation cannot resurrect an entry after checkpoint publication."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift"
+      ],
+      "id": "AKASHIC-CT-037",
+      "status": "implemented-local",
+      "summary": "Independent SIEVE shards receive integer budgets whose sum is exactly the global cost limit; concurrent unit-cost traffic remains globally bounded."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift"
+      ],
+      "id": "AKASHIC-CT-038",
+      "status": "implemented-local",
+      "summary": "A global limit change locks all shards in canonical order, restores an exact partition and reports precise removals."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift"
+      ],
+      "id": "AKASHIC-CT-039",
+      "status": "implemented-local",
+      "summary": "A uniformly distributed scan retains at least 28 of 32 previsited hot keys under a 128-cost sharded SIEVE budget."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift",
+        "Sources/AkashicMemory/ShardedMemoryBudget.swift"
+      ],
+      "id": "AKASHIC-CT-040",
+      "status": "implemented-local",
+      "summary": "An entry larger than one shard budget but no larger than the global budget uses the all-shard redistribution slow path; a globally oversized replacement leaves a miss. Int.max aggregate and replacement cases use subtraction-based capacity checks and cannot overflow before eviction."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift",
+        "Sources/AkashicMemory/MemoryCache.swift"
+      ],
+      "id": "AKASHIC-CT-041",
+      "status": "implemented-local",
+      "summary": "With one shard, observable insert/read/remove/resize behavior matches the independent classic MemoryCache SIEVE implementation over 4,000 deterministic operations."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift"
+      ],
+      "id": "AKASHIC-CT-042",
+      "status": "implemented-local",
+      "summary": "Prehashed bucket collision chains preserve equal-hash distinct keys across removal and victim-node recycling."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift"
+      ],
+      "id": "AKASHIC-CT-043",
+      "status": "implemented-local",
+      "summary": "Shrinking below a borrowed large entry evicts it and restores the exact new global bound."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift",
+        "Sources/AkashicMemory/ShardedMemoryBudget.swift"
+      ],
+      "id": "AKASHIC-CT-044",
+      "status": "implemented-local",
+      "summary": "Concurrent shard traffic, large-entry redistribution, filtered purge and repeated global resizing complete without deadlock and finish within the active global bound."
     }
-  ]
+  ],
+  "reviewedOn": "2026-08-02",
+  "rules": {
+    "candidateDoesNotImplyDefault": true,
+    "componentEvidenceDoesNotReplaceFoveaHostEvidence": true,
+    "partialIsNotComplete": true,
+    "processCrashDoesNotImplyPowerLoss": true,
+    "releaseQualified": false,
+    "syscallFaultEvidenceDoesNotImplyFullFilesystemFaultCoverage": true
+  },
+  "schemaVersion": 1,
+  "scope": "local-independent-package",
+  "statusID": "AKASHIC-CONFORMANCE-STATUS-V1"
 }
