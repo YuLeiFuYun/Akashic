@@ -3,7 +3,7 @@ import Testing
 
 @Suite("AkashicMemory sharded SIEVE cache")
 struct ShardedMemoryCacheTests {
-  @Test("AKASHIC-CT-037 shard budgets sum to exact global bound")
+  @Test("AKASHIC-CT-035 shard budgets sum to exact global bound")
   func exactGlobalBound() async {
     let cache = ShardedMemoryCache<Int, Int>(costLimit: 257, shardCount: 8)
     await withTaskGroup(of: Void.self) { group in
@@ -22,7 +22,7 @@ struct ShardedMemoryCacheTests {
     #expect(cache.costLimit == 257)
   }
 
-  @Test("AKASHIC-CT-038 dynamic limit preserves exact aggregate bound")
+  @Test("AKASHIC-CT-036 dynamic limit preserves exact aggregate bound")
   func dynamicLimit() {
     let cache = ShardedMemoryCache<Int, Int>(costLimit: 128, shardCount: 8)
     for key in 0 ..< 1000 {
@@ -37,7 +37,7 @@ struct ShardedMemoryCacheTests {
     #expect(cache.currentCost <= 3)
   }
 
-  @Test("AKASHIC-CT-039 scan-resistant hot set survives uniform scan")
+  @Test("AKASHIC-CT-037 scan-resistant hot set survives uniform scan")
   func scanResistance() {
     let cache = ShardedMemoryCache<Int, Int>(costLimit: 128, shardCount: 8)
     for key in 0 ..< 32 {
@@ -54,7 +54,7 @@ struct ShardedMemoryCacheTests {
     #expect(cache.currentCost <= 128)
   }
 
-  @Test("AKASHIC-CT-041 single shard matches classic SIEVE observable semantics")
+  @Test("AKASHIC-CT-039 single shard matches classic SIEVE observable semantics")
   func singleShardDifferential() {
     let sharded = ShardedMemoryCache<Int, String>(costLimit: 31, shardCount: 1)
     let classic = MemoryCache<Int, String>(costLimit: 31)
@@ -81,7 +81,7 @@ struct ShardedMemoryCacheTests {
     }
   }
 
-  @Test("AKASHIC-CT-042 prehashed buckets preserve colliding keys across recycling")
+  @Test("AKASHIC-CT-040 prehashed buckets preserve colliding keys across recycling")
   func collidingKeysAndRecycling() {
     let cache = ShardedMemoryCache<CollidingKey, Int>(costLimit: 4, shardCount: 1)
     for value in 0 ..< 4 {
@@ -103,7 +103,7 @@ struct ShardedMemoryCacheTests {
     #expect(cache.count <= 4)
   }
 
-  @Test("AKASHIC-CT-040 entry larger than one shard borrows global budget")
+  @Test("AKASHIC-CT-038 entry larger than one shard borrows global budget")
   func oversizedShardEntryUsesGlobalBudget() {
     let cache = ShardedMemoryCache<Int, Int>(costLimit: 64, shardCount: 8)
     cache.insert(1, for: 1, cost: 9)
@@ -144,7 +144,7 @@ struct ShardedMemoryCacheTests {
     #expect(maximum.currentCost == Int.max)
   }
 
-  @Test("AKASHIC-CT-044 concurrent rebalance, resize and shard traffic remain bounded")
+  @Test("AKASHIC-CT-042 concurrent rebalance, resize and shard traffic remain bounded")
   func concurrentRebalanceAndResize() async {
     let cache = ShardedMemoryCache<Int, Int>(costLimit: 257, shardCount: 8)
     await withTaskGroup(of: Void.self) { group in
@@ -184,7 +184,7 @@ struct ShardedMemoryCacheTests {
     #expect(cache.count >= 0)
   }
 
-  @Test("AKASHIC-CT-043 shrinking below a borrowed entry evicts to the global bound")
+  @Test("AKASHIC-CT-041 shrinking below a borrowed entry evicts to the global bound")
   func shrinkingBorrowedBudget() {
     let cache = ShardedMemoryCache<Int, Int>(costLimit: 64, shardCount: 8)
     cache.insert(1, for: 1, cost: 33)

@@ -40,14 +40,14 @@ node under two identities.
 
 ## Evidence
 
-- `AKASHIC-CT-037`: exact aggregate budget and concurrent unit-cost traffic.
-- `AKASHIC-CT-038`: atomic global resizing and exact removal accounting.
-- `AKASHIC-CT-039`: scan-resistant hot-set retention.
-- `AKASHIC-CT-040`: large-entry global-budget borrowing, global oversize rejection, and `Int.max` overflow-safe replacement.
-- `AKASHIC-CT-041`: one-shard differential against classic SIEVE over 4,000 operations.
-- `AKASHIC-CT-042`: equal-hash collision chains across deletion and victim recycling.
-- `AKASHIC-CT-043`: shrinking below a borrowed entry restores the global bound.
-- `AKASHIC-CT-044`: concurrent shard traffic, redistribution, resizing and filtered purge.
+- `AKASHIC-CT-035`: exact aggregate budget and concurrent unit-cost traffic.
+- `AKASHIC-CT-036`: atomic global resizing and exact removal accounting.
+- `AKASHIC-CT-037`: scan-resistant hot-set retention.
+- `AKASHIC-CT-038`: large-entry global-budget borrowing, global oversize rejection, and `Int.max` overflow-safe replacement.
+- `AKASHIC-CT-039`: one-shard differential against classic SIEVE over 4,000 operations.
+- `AKASHIC-CT-040`: equal-hash collision chains across deletion and victim recycling.
+- `AKASHIC-CT-041`: shrinking below a borrowed entry restores the global bound.
+- `AKASHIC-CT-042`: concurrent shard traffic, redistribution, resizing and filtered purge.
 - Temporary Fovea integration: 478/478 tests passed with the sharded memory candidate and disk v2;
   the production switch was then reverted until a public Akashic revision exists.
 - Cache Lab V2 final tree-bound campaign: twenty clean process blocks and twelve of thirteen applicable

@@ -11,7 +11,6 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
     }
     /// 此实现接受并写出的清单模式版本。
     public static let currentSchemaVersion: UInt16 = 2
-    static let legacyManifestSchemaVersion: UInt16 = 1
     static let maximumManifestBytes = 64 * 1024 * 1024
     static let maximumManifestRecordBytes = 16 * 1024
     static let manifestCheckpointRecordLimit = 512
@@ -23,10 +22,6 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         let schemaVersion: UInt16
     }
 
-    struct LegacyManifest: Codable {
-        let schemaVersion: UInt16
-        var entries: [String: Entry]
-    }
 
     struct Manifest: Codable {
         let schemaVersion: UInt16
@@ -156,25 +151,15 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
             )
             guard let envelope = try? JSONDecoder().decode(SchemaEnvelope.self, from: data)
             else { throw AkashicError.invalidManifest }
-            switch envelope.schemaVersion {
-            case Self.legacyManifestSchemaVersion:
-                let legacy = try JSONDecoder().decode(LegacyManifest.self, from: data)
-                let migrated = Manifest(entries: legacy.entries)
-                guard isValidManifest(migrated) else {
-                    throw AkashicError.invalidManifest
-                }
-                try persistManifestSnapshot(migrated, injectFaults: false)
-                manifest = migrated
-            case Self.currentSchemaVersion:
-                let decoded = try JSONDecoder().decode(Manifest.self, from: data)
-                guard isValidManifest(decoded) else {
-                    throw AkashicError.invalidManifest
-                }
-                manifest = decoded
-                try replayManifestRecords()
-            default:
+            guard envelope.schemaVersion == Self.currentSchemaVersion else {
                 throw AkashicError.unsupportedSchema
             }
+            let decoded = try JSONDecoder().decode(Manifest.self, from: data)
+            guard isValidManifest(decoded) else {
+                throw AkashicError.invalidManifest
+            }
+            manifest = decoded
+            try replayManifestRecords()
         } else {
             let initial = Manifest()
             try persistManifestSnapshot(initial, injectFaults: false)

@@ -40,7 +40,7 @@ def main() -> int:
         errors.append("releaseQualified must remain false")
 
     obligations = document.get("obligations", [])
-    expected_ids = [f"AKASHIC-CT-{index:03d}" for index in range(1, 45)]
+    expected_ids = [f"AKASHIC-CT-{index:03d}" for index in range(1, 43)]
     actual_ids: list[str] = []
     statuses: list[str] = []
     for item in obligations:
@@ -70,7 +70,7 @@ def main() -> int:
         )
 
     tests = "\n".join(path.read_text() for path in (ROOT / "Tests").rglob("*.swift"))
-    named_test_ids = expected_ids[:21] + expected_ids[30:]
+    named_test_ids = expected_ids[:21] + expected_ids[29:]
     for identifier in named_test_ids:
         status = obligations[int(identifier[-3:]) - 1]["status"]
         if status.startswith("implemented") and identifier not in tests:

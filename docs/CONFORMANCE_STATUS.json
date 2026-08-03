@@ -269,27 +269,12 @@
       "summary": "Independent Core, Memory and Disk imports pass in an external consumer; the public symbol baseline and source boundary pass, while a retained negative consumer cannot access package-only crash hooks."
     },
     {
-      "evidencePaths": [],
-      "id": "AKASHIC-CT-030",
-      "status": "planned",
-      "summary": "Released current/previous Fovea and Akashic compatibility matrix cannot exist before stable release identities."
-    },
-    {
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
-        "Sources/AkashicDisk/FileBlobStore.swift"
-      ],
-      "id": "AKASHIC-CT-031",
-      "status": "implemented-local",
-      "summary": "A legacy flat schema-1 manifest is migrated to a generation snapshot without losing verified visibility."
-    },
-    {
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Sources/AkashicDisk/FileBlobStore.swift",
         "Sources/AkashicDisk/FileBlobStoreFastCommit.swift"
       ],
-      "id": "AKASHIC-CT-032",
+      "id": "AKASHIC-CT-030",
       "status": "implemented-local",
       "summary": "Per-key incremental manifest records replay after writer release and store reopen."
     },
@@ -298,7 +283,7 @@
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
       ],
-      "id": "AKASHIC-CT-033",
+      "id": "AKASHIC-CT-031",
       "status": "implemented-local",
       "summary": "An incremental tombstone remains a miss after reopen and cannot resurrect the removed key."
     },
@@ -307,7 +292,7 @@
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Sources/AkashicDisk/FileBlobStore.swift"
       ],
-      "id": "AKASHIC-CT-034",
+      "id": "AKASHIC-CT-032",
       "status": "implemented-local",
       "summary": "A corrupt incremental manifest record fails closed as AkashicError.invalidManifest rather than leaking decoder errors."
     },
@@ -316,7 +301,7 @@
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
       ],
-      "id": "AKASHIC-CT-035",
+      "id": "AKASHIC-CT-033",
       "status": "implemented-local",
       "summary": "Multi-key maintenance emits a complete generation checkpoint and removes obsolete incremental records."
     },
@@ -325,7 +310,7 @@
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Sources/AkashicDisk/FileBlobStore.swift"
       ],
-      "id": "AKASHIC-CT-036",
+      "id": "AKASHIC-CT-034",
       "status": "implemented-local",
       "summary": "A stale incremental record from an older generation cannot resurrect an entry after checkpoint publication."
     },
@@ -334,7 +319,7 @@
         "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
         "Sources/AkashicMemory/ShardedMemoryCache.swift"
       ],
-      "id": "AKASHIC-CT-037",
+      "id": "AKASHIC-CT-035",
       "status": "implemented-local",
       "summary": "Independent SIEVE shards receive integer budgets whose sum is exactly the global cost limit; concurrent unit-cost traffic remains globally bounded."
     },
@@ -343,7 +328,7 @@
         "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
         "Sources/AkashicMemory/ShardedMemoryCache.swift"
       ],
-      "id": "AKASHIC-CT-038",
+      "id": "AKASHIC-CT-036",
       "status": "implemented-local",
       "summary": "A global limit change locks all shards in canonical order, restores an exact partition and reports precise removals."
     },
@@ -351,7 +336,7 @@
       "evidencePaths": [
         "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift"
       ],
-      "id": "AKASHIC-CT-039",
+      "id": "AKASHIC-CT-037",
       "status": "implemented-local",
       "summary": "A uniformly distributed scan retains at least 28 of 32 previsited hot keys under a 128-cost sharded SIEVE budget."
     },
@@ -361,7 +346,7 @@
         "Sources/AkashicMemory/ShardedMemoryCache.swift",
         "Sources/AkashicMemory/ShardedMemoryBudget.swift"
       ],
-      "id": "AKASHIC-CT-040",
+      "id": "AKASHIC-CT-038",
       "status": "implemented-local",
       "summary": "An entry larger than one shard budget but no larger than the global budget uses the all-shard redistribution slow path; a globally oversized replacement leaves a miss. Int.max aggregate and replacement cases use subtraction-based capacity checks and cannot overflow before eviction."
     },
@@ -371,7 +356,7 @@
         "Sources/AkashicMemory/ShardedMemoryCache.swift",
         "Sources/AkashicMemory/MemoryCache.swift"
       ],
-      "id": "AKASHIC-CT-041",
+      "id": "AKASHIC-CT-039",
       "status": "implemented-local",
       "summary": "With one shard, observable insert/read/remove/resize behavior matches the independent classic MemoryCache SIEVE implementation over 4,000 deterministic operations."
     },
@@ -380,7 +365,7 @@
         "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
         "Sources/AkashicMemory/ShardedMemoryCache.swift"
       ],
-      "id": "AKASHIC-CT-042",
+      "id": "AKASHIC-CT-040",
       "status": "implemented-local",
       "summary": "Prehashed bucket collision chains preserve equal-hash distinct keys across removal and victim-node recycling."
     },
@@ -388,7 +373,7 @@
       "evidencePaths": [
         "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift"
       ],
-      "id": "AKASHIC-CT-043",
+      "id": "AKASHIC-CT-041",
       "status": "implemented-local",
       "summary": "Shrinking below a borrowed large entry evicts it and restores the exact new global bound."
     },
@@ -398,7 +383,7 @@
         "Sources/AkashicMemory/ShardedMemoryCache.swift",
         "Sources/AkashicMemory/ShardedMemoryBudget.swift"
       ],
-      "id": "AKASHIC-CT-044",
+      "id": "AKASHIC-CT-042",
       "status": "implemented-local",
       "summary": "Concurrent shard traffic, large-entry redistribution, filtered purge and repeated global resizing complete without deadlock and finish within the active global bound."
     }

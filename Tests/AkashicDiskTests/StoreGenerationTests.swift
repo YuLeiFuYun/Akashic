@@ -14,19 +14,19 @@ struct StoreGenerationTests {
         try await withGenerationTemporaryDirectory { root in
             let first = try await StoreGenerationDirectory.open(
                 root: root,
-                compatibilityFingerprint: "schema-1"
+                compatibilityFingerprint: "current-layout-a"
             )
             let second = try await StoreGenerationDirectory.open(
                 root: root,
-                compatibilityFingerprint: "schema-1"
+                compatibilityFingerprint: "current-layout-a"
             )
             let other = try await StoreGenerationDirectory.open(
                 root: root,
-                compatibilityFingerprint: "schema-2"
+                compatibilityFingerprint: "current-layout-b"
             )
             let recoveredFirst = try await StoreGenerationDirectory.open(
                 root: root,
-                compatibilityFingerprint: "schema-1"
+                compatibilityFingerprint: "current-layout-a"
             )
 
             #expect(first.identifier == second.identifier)

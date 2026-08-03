@@ -6,53 +6,7 @@ import Testing
 
 @Suite("AkashicDisk manifest v2")
 struct FileBlobStoreManifestV2Tests {
-  @Test("AKASHIC-CT-031 legacy flat manifest migrates to generation snapshot")
-  func legacyManifestMigration() async throws {
-    try await withTemporaryDirectory { root in
-      let blobs = root.appendingPathComponent("blobs", isDirectory: true)
-      try createPrivateDirectory(root)
-      try createPrivateDirectory(blobs)
-
-      let data = Data("legacy-manifest-migration".utf8)
-      let digest = BlobDigest.sha256(of: data)
-      let partition = try partition("legacy-migration")
-      let physicalID = PhysicalBlobID()
-      let blob = blobURL(root: root, id: physicalID)
-      try writePrivateFile(data, to: blob)
-      let key = FileBlobStoreIdentity.manifestKey(
-        digest: digest,
-        partition: partition
-      )
-      let legacy = FileBlobStore.LegacyManifest(
-        schemaVersion: FileBlobStore.legacyManifestSchemaVersion,
-        entries: [
-          key: FileBlobStore.Entry(
-            physicalID: physicalID,
-            partition: partition,
-            digest: digest,
-            byteCount: data.count,
-            lastAccess: Date()
-          )
-        ]
-      )
-      try writePrivateFile(
-        try JSONEncoder().encode(legacy),
-        to: root.appendingPathComponent("manifest.json")
-      )
-
-      let store = try await FileBlobStore.open(root: root)
-      #expect(try await store.read(digest: digest, partition: partition) == data)
-      let migrated = try JSONDecoder().decode(
-        FileBlobStore.Manifest.self,
-        from: Data(contentsOf: root.appendingPathComponent("manifest.json"))
-      )
-      #expect(migrated.schemaVersion == FileBlobStore.currentSchemaVersion)
-      #expect(migrated.generation == 1)
-      #expect(migrated.entries[key]?.physicalID == physicalID)
-    }
-  }
-
-  @Test("AKASHIC-CT-032 incremental manifest records replay after reopen")
+  @Test("AKASHIC-CT-030 incremental manifest records replay after reopen")
   func incrementalManifestReplay() async throws {
     try await withTemporaryDirectory { root in
       let partition = try partition("incremental-replay")
@@ -84,7 +38,7 @@ struct FileBlobStoreManifestV2Tests {
     }
   }
 
-  @Test("AKASHIC-CT-033 incremental tombstone remains a miss after reopen")
+  @Test("AKASHIC-CT-031 incremental tombstone remains a miss after reopen")
   func incrementalTombstoneReplay() async throws {
     try await withTemporaryDirectory { root in
       let partition = try partition("incremental-tombstone")
@@ -104,7 +58,7 @@ struct FileBlobStoreManifestV2Tests {
     }
   }
 
-  @Test("AKASHIC-CT-034 corrupt incremental record fails closed")
+  @Test("AKASHIC-CT-032 corrupt incremental record fails closed")
   func corruptIncrementalRecordFailsClosed() async throws {
     try await withTemporaryDirectory { root in
       let partition = try partition("corrupt-incremental-record")
@@ -121,7 +75,7 @@ struct FileBlobStoreManifestV2Tests {
     }
   }
 
-  @Test("AKASHIC-CT-035 multi-key maintenance checkpoints and removes records")
+  @Test("AKASHIC-CT-033 multi-key maintenance checkpoints and removes records")
   func multiKeyMaintenanceCheckpoint() async throws {
     try await withTemporaryDirectory { root in
       let partition = try partition("multi-key-checkpoint")
@@ -151,7 +105,7 @@ struct FileBlobStoreManifestV2Tests {
     }
   }
 
-  @Test("AKASHIC-CT-036 stale generation record cannot resurrect an entry")
+  @Test("AKASHIC-CT-034 stale generation record cannot resurrect an entry")
   func staleGenerationRecordCannotResurrect() async throws {
     try await withTemporaryDirectory { root in
       let partition = try partition("stale-record")

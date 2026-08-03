@@ -130,7 +130,7 @@ scripts/verify-platform-matrix.sh AkashicDisk ios-device
 - 目标设备 RSS、FD、I/O bytes、metadata write amplification、reopen latency 和 energy；
 - 真正的断电、`F_FULLFSYNC` 对照和数小时级高迭代 kill-at-random 实验；
 - 多进程 reader snapshot/lease；
-- 稳定版本、远端 clean-clone 完整复验与 current/previous 兼容矩阵；
+- 当前精确 revision 的远端 clean-clone 完整复验；
 - Fovea 差分 trace、W3/W8/W13 组合验证和 rollback。
 
 详见 `ROADMAP.md`、`docs/ARCHITECTURE.md`、`docs/FAULT_INJECTION.md` 与 `docs/CONFORMANCE.md`。

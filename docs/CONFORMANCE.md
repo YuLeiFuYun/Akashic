@@ -1,6 +1,6 @@
 # Conformance status
 
-`docs/CONFORMANCE_STATUS.json` is the machine-readable status source for `AKASHIC-CT-001` through `AKASHIC-CT-044`.
+`docs/CONFORMANCE_STATUS.json` is the machine-readable status source for `AKASHIC-CT-001` through `AKASHIC-CT-042`.
 
 Current classification:
 
