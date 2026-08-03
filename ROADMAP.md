@@ -17,7 +17,7 @@ Akashic is an actively developed pre-1.0 cache and durable blob-store package. T
 3. Add long-duration kill-at-random and independent physical power-loss qualification.
 4. Measure physical I/O, metadata write amplification, RSS, file descriptors, reopen latency, and energy on stable macOS and iOS devices.
 5. Specify multi-process reader snapshot and lease semantics before exposing them.
-6. Extract a versioned storage conformance kit and current/previous host compatibility matrix.
+6. Run the current persistent-store provider conformance kit against a real independent provider and bind host composition evidence.
 7. Keep host authorization, HTTP semantics, namespace revocation, and cross-store commit coordination outside Akashic.
 
 ## Release policy
