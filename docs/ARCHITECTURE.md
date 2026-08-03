@@ -138,7 +138,7 @@ stage 在 publish 前不能通过 read 或 physicalID 观察。publish/discard �
 - 55 项 Core/Memory/Disk 单元、并发与故障测试；
 - 8 项 syscall 故障、1 项真实权限迁移、3 项真实 APFS 满卷恢复、3 项真实 APFS quota 恢复、11 个精确 `_exit` switch points 和 3 轮 78 个随机 `SIGKILL` 案例；
 - 6 个 Apple Release 编译案例；
-- 正向/负向外部 consumer、API、privacy、structure、source identity 和 clean-copy replay；
+- 正向/负向外部 consumer、API、privacy、structure、source identity v2 和 clean-copy replay；身份 v2 对 schema/identity ID 做域分离，区分仅顶层构建排除与任意层级临时文件排除，独立绑定完整覆盖范围、逐文件摘要与可执行位，clean-copy materializer 重新枚举来源树并直接写出已校验字节；
 - 3 个本地 macOS 资源 workload，记录峰值 RSS、采样 FD、逻辑 I/O、增量 metadata 写入、分离的 payload/metadata footprint 与 reopen latency。
 
 尚未验证：

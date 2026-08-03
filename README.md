@@ -94,7 +94,7 @@ let restored = try await disk.read(digest: digest, partition: partition)
 - 3 个本地 macOS 资源 workload：峰值 RSS、采样 FD、逻辑 payload/read、增量 metadata 写入、payload/metadata 分离 footprint 与 reopen latency；
 - 三产品外部 SwiftPM consumer；
 - 140 个库公共符号 baseline、领域词汇门与 package-only crash hook 负向编译门；
-- Privacy Manifest、源码结构、稳定 source identity 与无 Git/无构建缓存的 clean-copy 重放门。
+- Privacy Manifest、源码结构、source identity v2 与无 Git/无构建缓存的 clean-copy 重放门；v2 对 schema/identity ID 做域分离，将显式顶层覆盖范围、仅顶层构建排除项、任意层级临时文件排除项和 84 个文件共同纳入摘要，并为每个文件绑定可执行位，拒绝符号链接、未绑定顶层内容、未声明的嵌套构建子树及清单遗漏；clean-copy 直接写出已校验字节，避免校验后再次读取源文件。
 
 故障报告明确写入 `powerLossClaim=false`。真实满卷门使用普通用户可挂载的 64 MiB APFS 稀疏磁盘映像，并确认底层替换、blob stage 与 manifest publication 均真实观察到内核 `ENOSPC`。独立 quota 门在 1 GiB APFS 容器中创建 64 MiB 配额卷，要求失败时容器仍保有远大于 payload 的自由空间；durable replacement、blob stage 与 manifest publication 均直接保留内核 `ENOSPC`，随后重开仍必须清除未发布状态。两类门都不是物理设备或断电资格。精确 `_exit` 与随机 `SIGKILL` 同样不能证明设备断电、文件系统控制器持久化或 APFS 在所有硬件上的 power-loss 行为。资源报告固定 `physicalIOBytes=false`、`physicalDevice=false` 和 `energy=false`；它测量的是当前 macOS 进程与应用层逻辑字节，不是物理 I/O 或真机资格。
 
