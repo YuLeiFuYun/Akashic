@@ -48,8 +48,9 @@ node under two identities.
 - `AKASHIC-CT-040`: equal-hash collision chains across deletion and victim recycling.
 - `AKASHIC-CT-041`: shrinking below a borrowed entry restores the global bound.
 - `AKASHIC-CT-042`: concurrent shard traffic, redistribution, resizing and filtered purge.
-- Temporary Fovea integration: 478/478 tests passed with the sharded memory candidate and disk v2;
-  the production switch was then reverted until a public Akashic revision exists.
+- The temporary Fovea integration first passed 478/478 tests with the sharded memory candidate and
+  disk v2. Akashic revision `2715f23d50b5a17b7328be41608eaf1b1c99b0d6` was then published and
+  pinned exactly before downstream production adoption.
 - Cache Lab V2 final tree-bound campaign: twenty clean process blocks and twelve of thirteen applicable
   comparisons above the dominance margin; hot throughput versus LRUCache missed the lower bound.
 - Cache Lab V3 was archived after finding that the plan declared twenty hot rounds while the
@@ -59,7 +60,21 @@ node under two identities.
   Eight shards passed five independent diagnostic processes, then the V4 scope-all campaign accepted
   twenty clean process blocks and cleared all thirteen applicable dominance comparisons.
 
-This audit establishes the local synchronization argument. The performance result remains research
-evidence because the dependency is edited and the worktrees are dirty. It does not substitute for Thread
-Sanitizer, formal linearizability checking of non-commuting shared-key histories, or independent
-review; those remain release-strength follow-up evidence.
+## Downstream production adoption
+
+Fovea commit `7ef9aa1320a930ac913b122e5e37007053f974d9` switches its default rendered-image
+cache from single-lock `MemoryCache` to the exact public Akashic pin above with `shardCount: 8`.
+The complete Fovea premerge profile passed after the switch, including root tests, Cache Lab tests,
+loopback networking and Release construction.
+
+A same-host, three-process Cache Lab calibration on that candidate cleared all ten current memory
+comparisons against LRUCache and PINMemoryCache with no inferior or inconclusive endpoint. Selected
+point estimates were 2.96×/25.86× concurrent throughput and 2.72×/18.66× lower concurrent p99
+latency relative to LRUCache/PINMemoryCache. These are diagnostic calibration results, not a release
+claim: the current campaign has three repetitions rather than the preregistered twenty, and the
+measured Fovea source included working-tree changes before its exact commit was created.
+
+This audit establishes the local synchronization argument and records a verified downstream adoption.
+It does not substitute for Thread Sanitizer, formal linearizability checking of non-commuting
+shared-key histories, a clean twenty-block replication, or independent review; those remain
+release-strength follow-up evidence.
