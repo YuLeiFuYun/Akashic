@@ -67,14 +67,19 @@ cache from single-lock `MemoryCache` to the exact public Akashic pin above with 
 The complete Fovea premerge profile passed after the switch, including root tests, Cache Lab tests,
 loopback networking and Release construction.
 
-A same-host, three-process Cache Lab calibration on that candidate cleared all ten current memory
-comparisons against LRUCache and PINMemoryCache with no inferior or inconclusive endpoint. Selected
-point estimates were 2.96×/25.86× concurrent throughput and 2.72×/18.66× lower concurrent p99
-latency relative to LRUCache/PINMemoryCache. These are diagnostic calibration results, not a release
-claim: the current campaign has three repetitions rather than the preregistered twenty, and the
-measured Fovea source included working-tree changes before its exact commit was created.
+The clean downstream candidate then completed the preregistered Cache Lab V4 formal campaign:
+Fovea commit `7ef9aa1320a930ac913b122e5e37007053f974d9` resolved this exact Akashic revision,
+and twenty independent monitored process blocks were accepted with zero contaminated attempts.
+The analyzer reported `bestClaimEligible=true`, no correctness failures, no inferior or inconclusive
+endpoint, and all thirteen applicable dominance comparisons passing. Selected oriented median ratios
+against LRUCache/PINMemoryCache were 3.109×/24.77× concurrent throughput and 2.834×/19.42× lower
+concurrent p99 latency. Against the durability-aligned PINDiskCache wrapper, write throughput was
+1.762×, read throughput 1.696×, and p99 read latency 2.177× lower. The Fovea evidence record is
+`docs/research/cache-lab-v4-formal-evidence-2026-08.json`, with analysis SHA-256
+`8c7486d332fc8f4de525d5bf053a87b8142c23c12ddefab85bf33b43d48c1ced`.
 
-This audit establishes the local synchronization argument and records a verified downstream adoption.
-It does not substitute for Thread Sanitizer, formal linearizability checking of non-commuting
-shared-key histories, a clean twenty-block replication, or independent review; those remain
-release-strength follow-up evidence.
+This audit establishes the local synchronization argument and records verified downstream production
+adoption plus a scoped formal CacheLab result. It does not establish dominance over every cache,
+workload, platform, energy profile, or end-to-end image-loading path. Thread Sanitizer, formal
+linearizability checking of non-commuting shared-key histories, held-out traces, independent or
+trusted-CI replication, and independent review remain release-strength follow-up evidence.
