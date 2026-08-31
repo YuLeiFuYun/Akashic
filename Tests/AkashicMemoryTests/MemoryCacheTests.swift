@@ -21,6 +21,29 @@ struct MemoryCacheTests {
         #expect(cache.value(for: "b") == nil)
     }
 
+    @Test("Research eviction trace preserves hand order across full visited epoch reset")
+    func researchEvictionTraceEpochResetHandOrder() {
+        let cache = MemoryCache<Int, Int>(costLimit: 4)
+        for key in 0..<4 {
+            cache.insert(key, for: key, cost: 1)
+        }
+
+        // Move the hand away from leastRecent: key 0 gets a second chance, key 1 is evicted,
+        // and the hand advances to key 2 while key 0 remains the FIFO head.
+        #expect(cache.resourceProbeMarkVisited(for: 0))
+        cache.insert(4, for: 4, cost: 1)
+        #expect(cache.resourceProbeValueWithoutVisit(for: 1) == nil)
+
+        for key in [0, 2, 3, 4] {
+            #expect(cache.resourceProbeMarkVisited(for: key))
+        }
+
+        let trace = cache.resourceProbeEvictionTrace(incomingCost: 1)
+        #expect(trace.fullVisitedEpochResetCount == 1)
+        #expect(trace.clearedVisitedKeys == [2, 3, 4, 0])
+        #expect(trace.victims.map(\.key) == [2])
+    }
+
     @Test("AKASHIC-CT-028 purge reports exact count and cost")
     func purgeAccounting() {
         let cache = MemoryCache<Int, String>(costLimit: 100)

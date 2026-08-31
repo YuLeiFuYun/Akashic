@@ -1,4 +1,5 @@
 import AkashicCore
+import Darwin
 import Foundation
 
 extension FileBlobStore {
@@ -7,6 +8,7 @@ extension FileBlobStore {
         retaining references: Set<LiveBlobReference>,
         limits: BlobMaintenanceLimits
     ) async throws -> BlobMaintenanceResult {
+        try ensureUsableStoreState()
         try limits.validate(references)
         let victims = manifest.entries.filter { _, entry in
             !references.contains(
@@ -17,11 +19,17 @@ extension FileBlobStore {
             )
         }
         guard !victims.isEmpty else {
-            let removed = try removeUnreferencedBlobFiles()
-            return try BlobMaintenanceResult(
-                removedBlobCount: removed.fileCount,
-                removedByteCount: removed.byteCount
-            )
+            do {
+                let removed = try removeUnreferencedBlobFiles()
+                return try BlobMaintenanceResult(
+                    removedBlobCount: removed.fileCount,
+                    removedByteCount: removed.byteCount
+                )
+            } catch {
+                // Garbage collection is the explicit physical-maintenance surface. Unlike logical
+                // remove, failure to repay physical debt remains an observable maintenance error.
+                throw AkashicError.storageUnavailable
+            }
         }
 
         var next = manifest
@@ -33,8 +41,9 @@ extension FileBlobStore {
         var removed = BlobPhysicalRemovalSummary()
         for entry in victims.values {
             do {
-                try FileManager.default.removeItem(at: blobURL(entry.physicalID))
-                removed.record(byteCount: entry.byteCount)
+                if try removeBlobDirectoryEntryIfPresent(blobURL(entry.physicalID)) {
+                    removed.record(byteCount: entry.byteCount)
+                }
             } catch let error as CocoaError where error.code == .fileNoSuchFile {
                 continue
             } catch {
@@ -46,7 +55,13 @@ extension FileBlobStore {
         } catch {
             firstError = firstError ?? error
         }
-        if firstError != nil { throw AkashicError.storageUnavailable }
+        if firstError != nil {
+            // Logical GC authority is already committed. If any payload carrier could not be
+            // retired, seal the final logical state before surfacing the physical-maintenance
+            // failure so a later missing delta carrier cannot roll recovery backward.
+            try sealManifestAfterPhysicalCleanupDebt()
+            throw AkashicError.storageUnavailable
+        }
         return try BlobMaintenanceResult(
             removedBlobCount: removed.fileCount,
             removedByteCount: removed.byteCount
@@ -55,6 +70,7 @@ extension FileBlobStore {
 
     /// 返回活动 partition/digest 对应的不透明物理定位符。
     public func physicalID(digest: BlobDigest, partition: CachePartitionID) -> PhysicalBlobID? {
+        guard !requiresReopenBeforeFurtherAccess else { return nil }
         let entry = manifest.entries[
             FileBlobStoreIdentity.manifestKey(
                 digest: digest, partition: partition)
@@ -64,20 +80,28 @@ extension FileBlobStore {
 
     /// 先删除一个逻辑条目，再删除其物理数据块。
     public func remove(digest: BlobDigest, partition: CachePartitionID) throws {
+        try ensureUsableStoreState()
         let key = FileBlobStoreIdentity.manifestKey(
             digest: digest, partition: partition)
         discardPendingStages { $0.key == key }
         guard let entry = manifest.entries[key] else { return }
 
-        var next = manifest
-        next.entries.removeValue(forKey: key)
-        manifest = try persistManifest(next)
+        manifest = try persistSingleKeyManifestEntry(key: key, entry: nil)
         runtimeLastAccess.removeValue(forKey: key)
-        try removeFileIfPresent(blobURL(entry.physicalID))
+        // Logical authority is terminal once the tombstone/manifest mutation is durable. Physical
+        // unlink is cleanup, not rollback. If cleanup fails, however, schema 3 must seal the final
+        // miss into the next snapshot generation before reporting success; otherwise loss of the
+        // tombstone could expose the lower-sequence create carrier still attached to this payload.
+        do {
+            try removeFileIfPresent(blobURL(entry.physicalID))
+        } catch {
+            try sealManifestAfterPhysicalCleanupDebt()
+        }
     }
 
     /// 删除某 partition 拥有的全部逻辑与物理条目。
     public func removeAll(partition: CachePartitionID) throws {
+        try ensureUsableStoreState()
         discardPendingStages { $0.partition == partition }
         let victims = manifest.entries.filter {
             $0.value.partition == partition
@@ -89,41 +113,47 @@ extension FileBlobStore {
         manifest = try persistManifest(next)
         for key in victims.keys { runtimeLastAccess.removeValue(forKey: key) }
 
-        var firstFailure: (any Error)?
+        var cleanupDebtObserved = false
         for entry in victims.values {
+            // Partition revocation is a logical-authority operation. A failed payload unlink must
+            // not turn an already-committed revoke into an apparent rollback; strict physical debt
+            // repayment remains available through garbageCollect.
             do {
                 try removeFileIfPresent(blobURL(entry.physicalID))
             } catch {
-                firstFailure = firstFailure ?? error
+                cleanupDebtObserved = true
             }
         }
-        if let firstFailure { throw firstFailure }
+        if cleanupDebtObserved {
+            try sealManifestAfterPhysicalCleanupDebt()
+        }
     }
 
     func quarantineEntry(key: String, blobURL: URL) throws {
-        var next = manifest
-        next.entries.removeValue(forKey: key)
         do {
-            manifest = try persistManifest(next)
+            manifest = try persistSingleKeyManifestEntry(key: key, entry: nil)
         } catch {
             throw AkashicError.storageUnavailable
         }
         runtimeLastAccess.removeValue(forKey: key)
-        try? FileManager.default.removeItem(at: blobURL)
+        do {
+            try removeFileIfPresent(blobURL)
+        } catch {
+            try sealManifestAfterPhysicalCleanupDebt()
+        }
     }
 
     func removeFileIfPresent(_ url: URL) throws {
-        do {
-            try FileManager.default.removeItem(at: url)
-        } catch let error as CocoaError where error.code == .fileNoSuchFile {
-            return
-        }
+        _ = try removeBlobDirectoryEntryIfPresent(url)
     }
 
     func reconcileStorageAfterBootstrap() throws {
         let fileManager = FileManager.default
         try removeManifestTemporaryFiles()
-        _ = try removeUnreferencedBlobFiles()
+        // Unreferenced payloads have no logical authority. An external filesystem condition can
+        // make physical deletion temporarily impossible (for example UF_IMMUTABLE); that resource
+        // debt must not make an otherwise valid manifest unreadable. Explicit GC remains strict.
+        _ = try removeUnreferencedBlobFiles(allowRemovalDebt: true)
 
         var next = manifest
         var obsoleteBlobURLs: [URL] = []
@@ -138,7 +168,7 @@ extension FileBlobStore {
                 obsoleteBlobURLs.append(url)
                 continue
             }
-            try StorageDirectorySecurity.securePublishedFile(url)
+            try StorageDirectorySecurity.validateOrRepairPublishedFilePermissions(url)
         }
         if next.entries != manifest.entries {
             manifest = try persistManifest(next)
@@ -169,28 +199,117 @@ extension FileBlobStore {
         }
     }
 
-    func removeUnreferencedBlobFiles() throws -> BlobPhysicalRemovalSummary {
-        let fileManager = FileManager.default
+    func removeUnreferencedBlobFiles(
+        allowRemovalDebt: Bool = false
+    ) throws -> BlobPhysicalRemovalSummary {
         let files = try boundedChildren(
             at: blobs,
             includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]
         )
+        try resetBlobDirectoryEntryCount(files.count)
+        let livePhysicalIDsByName = Dictionary(
+            uniqueKeysWithValues: manifest.entries.values.map { entry in
+                (entry.physicalID.rawValue.uuidString.lowercased(), entry.physicalID)
+            }
+        )
         let referencedNames = Set(
-            manifest.entries.values.map { $0.physicalID.rawValue.uuidString.lowercased() }
-                + pendingStages.values.filter(\.createdFile).map { $0.physicalID.rawValue.uuidString.lowercased() }
+            livePhysicalIDsByName.keys
+                + pendingStages.values.filter(\.createdFile).map {
+                    $0.physicalID.rawValue.uuidString.lowercased()
+                }
         )
         var removed = BlobPhysicalRemovalSummary()
+        var knownLegacyRecordDebt = Set(staleManifestRecordCleanupQueue)
         for file in files {
             let name = file.lastPathComponent
-            if isManifestRecordName(name) { continue }
+            if isManifestRecordName(name) {
+                // Schema4 never publishes sidecar manifest records. Any valid sidecar-shaped file
+                // is therefore legacy schema2/3 metadata, never current logical authority.
+                guard manifest.schemaVersion == Self.directoryHeadManifestSchemaVersion else {
+                    continue
+                }
+                do {
+                    try validateLegacyManifestRecordCleanupCandidate(
+                        file,
+                        staleBeforeGeneration: manifest.generation
+                    )
+                } catch let error as POSIXError where error.code == .ENOENT {
+                    continue
+                } catch {
+                    // Bootstrap is not allowed to delete or adopt a foreign/corrupt lookalike.
+                    // Explicit GC is the strict maintenance surface and reports it.
+                    if allowRemovalDebt { continue }
+                    throw AkashicError.storageUnavailable
+                }
+                if allowRemovalDebt {
+                    if knownLegacyRecordDebt.insert(file).inserted {
+                        staleManifestRecordCleanupQueue.append(file)
+                    }
+                    continue
+                }
+                do {
+                    _ = try removeBlobDirectoryEntryIfPresent(file)
+                } catch let error as CocoaError where error.code == .fileNoSuchFile {
+                    continue
+                } catch {
+                    throw AkashicError.storageUnavailable
+                }
+                continue
+            }
+            if let physicalID = livePhysicalIDsByName[name] {
+                if manifest.schemaVersion == Self.directoryHeadManifestSchemaVersion,
+                    !allowRemovalDebt
+                {
+                    do {
+                        _ = try removeLegacyManifestXattrsFromPublishedBlob(
+                            at: file,
+                            physicalID: physicalID,
+                            staleBeforeGeneration: manifest.generation
+                        )
+                    } catch {
+                        // Schema4 no longer interprets payload xattrs as logical authority, but
+                        // explicit GC is the strict physical-maintenance surface. Corrupt foreign
+                        // lookalikes or inability to durably retire valid legacy metadata remain
+                        // observable instead of being silently grandfathered forever.
+                        throw AkashicError.storageUnavailable
+                    }
+                }
+                continue
+            }
             guard name.hasPrefix(".tmp-") || name.hasPrefix(".durable-tmp-")
                 || !referencedNames.contains(name)
             else { continue }
             let values = try? file.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-            try fileManager.removeItem(at: file)
+            do {
+                _ = try removeBlobDirectoryEntryIfPresent(file)
+            } catch {
+                if allowRemovalDebt,
+                    let uuid = UUID(uuidString: name),
+                    uuid.uuidString.lowercased() == name
+                {
+                    do {
+                        try StorageDirectorySecurity.validateRegularFile(file)
+                        continue
+                    } catch let validationError as POSIXError where validationError.code == .ENOENT {
+                        // The orphan disappeared after the failed unlink but before validation.
+                        // Treat the cleanup debt as already repaid rather than failing bootstrap.
+                        continue
+                    } catch {
+                        throw AkashicError.storageUnavailable
+                    }
+                }
+                throw AkashicError.storageUnavailable
+            }
             if values?.isRegularFile == true {
                 removed.record(byteCount: values?.fileSize ?? 0)
             }
+        }
+        if !allowRemovalDebt,
+            manifest.schemaVersion == Self.directoryHeadManifestSchemaVersion
+        {
+            // A successful strict pass has either removed every valid legacy sidecar or failed on
+            // an unsafe lookalike. Any queued URLs are therefore already physically absent.
+            staleManifestRecordCleanupQueue.removeAll(keepingCapacity: true)
         }
         return removed
     }
@@ -207,7 +326,13 @@ extension FileBlobStore {
     }
 
     func trimIfNeeded() throws {
-        var total = manifest.entries.values.reduce(0) { $0 + $1.byteCount }
+        var total: Int
+        if let cached = manifestLiveByteCount {
+            total = cached
+        } else {
+            total = manifest.entries.values.reduce(0) { $0 + $1.byteCount }
+            manifestLiveByteCount = total
+        }
         guard total > limits.softTotalBytes else { return }
 
         let entriesByLastAccess = manifest.entries.map { key, entry in
@@ -228,41 +353,58 @@ extension FileBlobStore {
             if total <= limits.softTotalBytes { break }
         }
         manifest = try persistManifest(next)
+        manifestLiveByteCount = total
+        var cleanupDebtObserved = false
         for victim in victims {
             runtimeLastAccess.removeValue(forKey: victim.key)
-            try? FileManager.default.removeItem(at: blobURL(victim.entry.physicalID))
+            do {
+                try removeFileIfPresent(blobURL(victim.entry.physicalID))
+            } catch {
+                cleanupDebtObserved = true
+            }
         }
+        if cleanupDebtObserved {
+            try sealManifestAfterPhysicalCleanupDebt()
+        }
+    }
+
+    func isValidManifestEntry(key: String, entry: Entry) -> Bool {
+        Self.isValidManifestEntryCore(key: key, entry: entry)
+    }
+
+    func isValidManifestEntriesAndOwnership(_ manifest: Manifest) -> Bool {
+        validatedManifestOwnershipIndex(manifest) != nil
     }
 
     func isValidManifest(_ manifest: Manifest) -> Bool {
-        var physicalIDs = Set<PhysicalBlobID>()
-        var totalBytes = 0
-        guard manifest.schemaVersion == Self.currentSchemaVersion,
-            manifest.generation > 0,
-            manifest.entries.count <= Self.maximumManifestEntryCount
-        else { return false }
-        for (key, entry) in manifest.entries {
-            guard entry.byteCount >= 0,
-                entry.byteCount <= Self.maximumSupportedBlobBytes,
-                entry.lastAccess.timeIntervalSinceReferenceDate.isFinite,
-                entry.digest.byteCount == entry.byteCount,
-                key
-                    == FileBlobStoreIdentity.manifestKey(
-                        digest: entry.digest,
-                        partition: entry.partition
-                    ),
-                physicalIDs.insert(entry.physicalID).inserted
-            else { return false }
-            let addition = totalBytes.addingReportingOverflow(entry.byteCount)
-            guard !addition.overflow else { return false }
-            totalBytes = addition.partialValue
+        switch manifest.schemaVersion {
+        case Self.currentSchemaVersion:
+            guard manifest.deltaCarrierProfile == nil else { return false }
+        case Self.directoryHeadManifestSchemaVersion:
+            guard manifest.deltaCarrierProfile == .directoryHeadV2 else { return false }
+        default:
+            return false
         }
-        return true
+        return isValidManifestEntriesAndOwnership(manifest)
     }
 
-    func recordAccess(for key: String, blobURL: URL) {
-        // mtime 只承担跨进程近似最近性；运行时字典保留精确顺序。
-        runtimeLastAccess[key] = BlobAccessJournal.recordAccess(at: blobURL)
+    func recordAccess(
+        for key: String,
+        blobURL: URL,
+        persistedModificationDate: Date? = nil
+    ) {
+        // mtime 只承担跨进程近似最近性；运行时字典保留精确顺序。读取路径已经验证过
+        // 同一 inode 时把观察到的 mtime 一并传入，常见的五分钟窗口内无需再次 open/fstat。
+        runtimeLastAccess[key] = BlobAccessJournal.recordAccess(
+            at: blobURL,
+            persistedModificationDate: persistedModificationDate
+        )
+    }
+
+    func ensureUsableStoreState() throws {
+        guard !requiresReopenBeforeFurtherAccess else {
+            throw AkashicError.storageUnavailable
+        }
     }
 
     func effectiveLastAccess(for key: String, entry: Entry) -> Date {
@@ -275,198 +417,6 @@ extension FileBlobStore {
             latest = modificationDate
         }
         return latest
-    }
-
-    /// 持久化清单变化。单 key 变化写固定大小增量记录；批量变化和周期检查点
-    /// 仍原子替换完整快照，从而保留 GC/removeAll 的全有或全无边界。
-    func persistManifest(_ candidate: Manifest) throws -> Manifest {
-        let next = Manifest(
-            generation: manifest.generation,
-            entries: candidate.entries
-        )
-        guard isValidManifest(next) else { throw AkashicError.storageUnavailable }
-
-        let changedKeys = Set(manifest.entries.keys).union(next.entries.keys).filter {
-            manifest.entries[$0] != next.entries[$0]
-        }
-        guard !changedKeys.isEmpty else { return manifest }
-        guard changedKeys.count == 1, let key = changedKeys.first else {
-            return try checkpointManifest(next)
-        }
-
-        let recordURL = manifestRecordURL(for: key)
-        let createsRecord = !FileManager.default.fileExists(atPath: recordURL.path)
-        if manifestRecordCount + (createsRecord ? 1 : 0) >= Self.manifestCheckpointRecordLimit {
-            return try checkpointManifest(next)
-        }
-        let sequence = manifestRecordSequence.addingReportingOverflow(1)
-        guard !sequence.overflow else { return try checkpointManifest(next) }
-        let record = ManifestRecord(
-            generation: manifest.generation,
-            sequence: sequence.partialValue,
-            key: key,
-            entry: next.entries[key]
-        )
-        try persistManifestRecord(record, to: recordURL)
-        manifestRecordSequence = sequence.partialValue
-        if createsRecord { manifestRecordCount += 1 }
-        return next
-    }
-
-    func persistManifestSnapshot(
-        _ snapshot: Manifest,
-        injectFaults: Bool
-    ) throws {
-        guard isValidManifest(snapshot) else { throw AkashicError.storageUnavailable }
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-        let data = try encoder.encode(snapshot)
-        guard data.count <= Self.maximumManifestBytes else {
-            throw AkashicError.storageUnavailable
-        }
-        let injector = faultInjector
-        try DurableFileWriter.writeReplacing(
-            data,
-            to: manifestURL,
-            faultInjector: { point in
-                guard injectFaults else { return }
-                try Self.forwardManifestFault(point, to: injector)
-            }
-        )
-    }
-
-    func replayManifestRecords() throws {
-        let candidates = try boundedChildren(at: blobs, includingPropertiesForKeys: nil)
-            .filter { isManifestRecordName($0.lastPathComponent) }
-        var records: [ManifestRecord] = []
-        var sequences = Set<UInt64>()
-        var staleURLs: [URL] = []
-        for url in candidates {
-            let record: ManifestRecord
-            do {
-                let data = try BoundedFileReader.read(
-                    from: url,
-                    maximumBytes: Self.maximumManifestRecordBytes
-                )
-                record = try JSONDecoder().decode(ManifestRecord.self, from: data)
-            } catch {
-                throw AkashicError.invalidManifest
-            }
-            guard record.schemaVersion == ManifestRecord.currentSchemaVersion,
-                isValidManifestKey(record.key),
-                url == manifestRecordURL(for: record.key),
-                record.sequence > 0
-            else { throw AkashicError.invalidManifest }
-            if record.generation < manifest.generation {
-                staleURLs.append(url)
-                continue
-            }
-            guard record.generation == manifest.generation,
-                records.count < Self.manifestCheckpointRecordLimit,
-                sequences.insert(record.sequence).inserted
-            else { throw AkashicError.invalidManifest }
-            if let entry = record.entry {
-                guard record.key
-                    == FileBlobStoreIdentity.manifestKey(
-                        digest: entry.digest,
-                        partition: entry.partition
-                    )
-                else { throw AkashicError.invalidManifest }
-            }
-            records.append(record)
-        }
-
-        records.sort { $0.sequence < $1.sequence }
-        for record in records {
-            if let entry = record.entry {
-                manifest.entries[record.key] = entry
-            } else {
-                manifest.entries.removeValue(forKey: record.key)
-            }
-        }
-        guard isValidManifest(manifest) else { throw AkashicError.invalidManifest }
-        manifestRecordSequence = records.last?.sequence ?? 0
-        manifestRecordCount = records.count
-        for url in staleURLs { try? FileManager.default.removeItem(at: url) }
-    }
-
-    private func checkpointManifest(_ candidate: Manifest) throws -> Manifest {
-        let generation = manifest.generation.addingReportingOverflow(1)
-        guard !generation.overflow else { throw AkashicError.storageUnavailable }
-        let snapshot = Manifest(
-            generation: generation.partialValue,
-            entries: candidate.entries
-        )
-        try persistManifestSnapshot(snapshot, injectFaults: true)
-        manifestRecordSequence = 0
-        manifestRecordCount = 0
-        removeManifestRecordsBestEffort()
-        return snapshot
-    }
-
-    private func persistManifestRecord(
-        _ record: ManifestRecord,
-        to destination: URL
-    ) throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-        let data = try encoder.encode(record)
-        guard data.count <= Self.maximumManifestRecordBytes else {
-            throw AkashicError.storageUnavailable
-        }
-        let injector = faultInjector
-        try DurableFileWriter.writeReplacing(
-            data,
-            to: destination,
-            faultInjector: { point in
-                try Self.forwardManifestFault(point, to: injector)
-            }
-        )
-    }
-
-    nonisolated private static func forwardManifestFault(
-        _ point: DurableFileWriteSwitchPoint,
-        to injector: FileBlobStoreFaultInjector
-    ) throws {
-        switch point {
-        case .afterDataWritten:
-            try injector(.afterManifestDataWritten)
-        case .afterFileSynced:
-            try injector(.afterManifestFileSynced)
-        case .afterRename:
-            try injector(.afterManifestRenamed)
-        case .afterDirectorySynced:
-            try injector(.afterManifestDirectorySynced)
-        }
-    }
-
-    private func manifestRecordURL(for key: String) -> URL {
-        blobs.appendingPathComponent(
-            ".manifest-entry-\(key).json",
-            isDirectory: false
-        )
-    }
-
-    private func isManifestRecordName(_ name: String) -> Bool {
-        guard name.hasPrefix(".manifest-entry-"), name.hasSuffix(".json") else {
-            return false
-        }
-        let key = String(name.dropFirst(".manifest-entry-".count).dropLast(".json".count))
-        return isValidManifestKey(key)
-    }
-
-    private func isValidManifestKey(_ key: String) -> Bool {
-        key.utf8.count == 64 && key.utf8.allSatisfy {
-            (48...57).contains($0) || (97...102).contains($0)
-        }
-    }
-
-    private func removeManifestRecordsBestEffort() {
-        guard let children = try? boundedChildren(at: blobs, includingPropertiesForKeys: nil)
-        else { return }
-        for url in children where isManifestRecordName(url.lastPathComponent) {
-            try? FileManager.default.removeItem(at: url)
-        }
     }
 
     func blobURL(_ id: PhysicalBlobID) -> URL {

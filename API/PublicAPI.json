@@ -1281,10 +1281,10 @@
           "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC7publishy0A4Core0D11PublicationVAE0D5StageVKF"
         },
         {
-          "declaration": "func read(digest: BlobDigest, partition: CachePartitionID) throws -> Data",
+          "declaration": "func read(digest: BlobDigest, partition: CachePartitionID) async throws -> Data",
           "kind": "swift.method",
           "path": "FileBlobStore.read(digest:partition:)",
-          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC4read6digest9partition10Foundation4DataV0A4Core0D6DigestV_AJ16CachePartitionIDVtKF"
+          "preciseIdentifier": "s:11AkashicDisk13FileBlobStoreC4read6digest9partition10Foundation4DataV0A4Core0D6DigestV_AJ16CachePartitionIDVtYaKF"
         },
         {
           "declaration": "func remove(digest: BlobDigest, partition: CachePartitionID) throws",

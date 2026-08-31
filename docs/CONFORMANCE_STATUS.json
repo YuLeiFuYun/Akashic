@@ -149,11 +149,12 @@
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
         "Tests/AkashicDiskTests/FileBlobStorePermissionTransitionTests.swift",
+        "Tests/AkashicCoreTests/StorageDirectorySecurityOwnershipTests.swift",
         "Sources/AkashicCore/StorageDirectorySecurity.swift"
       ],
       "id": "AKASHIC-CT-016",
-      "status": "partial-static-and-local",
-      "summary": "Symlink, hardlink, wrong file type, unsafe mode and live parent-directory permission transition tests pass; owner checks exist in code but a different-owner fixture is not produced locally."
+      "status": "implemented-local",
+      "summary": "Symlink, hardlink, wrong file type, unsafe mode and live parent-directory permission transition tests pass; the owner-only fstat gate is exercised with a real different-owner regular descriptor, using a read-only root-owned system fixture for non-root runners and a temporary chowned fixture when the runner itself is root."
     },
     {
       "evidencePaths": [
@@ -178,16 +179,16 @@
     {
       "evidencePaths": [
         "Sources/AkashicResourceProbe/AkashicResourceProbe.swift",
+        "Sources/AkashicResourceProbe/ResourceProbeMetadata.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestRecord.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift",
         "Tools/Resource/verify_local_resource_envelope.py",
-        "scripts/verify-local-resource-envelope.sh",
-        "Tools/Fault/verify_real_full_volume.py",
-        "scripts/verify-real-full-volume.sh",
-        "Tools/Fault/verify_real_quota.py",
-        "scripts/verify-real-apfs-quota.sh"
+        "Tools/Resource/capture_filesystem_io_ledger.py",
+        "scripts/verify-local-resource-envelope.sh"
       ],
       "id": "AKASHIC-CT-019",
       "status": "partial-local",
-      "summary": "Resource schema 2 runs three retained macOS workloads with separate UUID payload and incremental-metadata footprint accounting; full-volume and APFS quota matrices qualify two storage-exhaustion modes. Physical I/O, stable-device and energy evidence remain absent."
+      "summary": "Resource schema 3 separates regular metadata files from logical manifest-xattr bytes instead of fabricating xattr physical allocation. Source-bound APFS process-visible I/O shows the xattr fast-create path removes exactly one 4 KiB metadata-page write per populated blob versus the same-current-source sidecar control; retained 64x4 KiB, 32x64 KiB and 8x1 MiB populations finish at 1.015625x, 1.001953x and 1.000488x filesystem-process write ratios. Tiny 64 B/1 KiB payloads remain dominated by the filesystem payload block. NAND/controller bytes, stable-device and energy evidence remain absent."
     },
     {
       "evidencePaths": [
@@ -211,31 +212,31 @@
       "evidencePaths": [],
       "id": "AKASHIC-CT-022",
       "status": "planned",
-      "summary": "Fovea ContentID to BlobDigest adapter equivalence is not implemented."
+      "summary": "A source-bound temporary Fovea package-slice qualification passes current-package ContentID-to-BlobDigest exact identity adaptation, but no durable host-owned conformance receipt is wired into Akashic; the host obligation therefore remains planned and carries no component-local evidence path."
     },
     {
       "evidencePaths": [],
       "id": "AKASHIC-CT-023",
       "status": "planned",
-      "summary": "Fovea record publication failure and orphan composition test is not implemented."
+      "summary": "A source-bound temporary Fovea package-slice qualification passes record-publication failure cleanup with AkashicDerivedRasterStore and leaves no unreachable blob/record debt, but no durable host-owned conformance receipt is wired into Akashic; the host obligation remains planned."
     },
     {
       "evidencePaths": [],
       "id": "AKASHIC-CT-024",
       "status": "planned",
-      "summary": "Fovea revoke versus late publication composition test is not implemented."
+      "summary": "A source-bound temporary Fovea package-slice qualification passes revoke-versus-late-blob publication cleanup against current Akashic, but no durable host-owned conformance receipt is wired into Akashic; the host obligation remains planned."
     },
     {
       "evidencePaths": [],
       "id": "AKASHIC-CT-025",
       "status": "planned",
-      "summary": "Fovea nonpersistent final delivery under cache write failure is not implemented against the independent package."
+      "summary": "A source-bound temporary Fovea package-slice qualification uses the real current AkashicOriginalEncodedStore, forces transactional stage failure with a blob-byte limit, still returns the final decoded image, and leaves neither blob nor representation record; no durable host-owned conformance receipt is wired into Akashic, so the host obligation remains planned."
     },
     {
       "evidencePaths": [],
       "id": "AKASHIC-CT-026",
       "status": "planned",
-      "summary": "Adversarial custom-store host identity test is not implemented."
+      "summary": "A source-bound temporary Fovea package-slice qualification passes adversarial qualified-provider descriptor substitution rejection against current Akashic, but no durable host-owned conformance receipt is wired into Akashic; the host obligation remains planned."
     },
     {
       "evidencePaths": [
@@ -270,17 +271,19 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Tests/AkashicDiskTests/FileBlobStoreManifestV2Tests.swift",
         "Sources/AkashicDisk/FileBlobStore.swift",
-        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift"
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
       ],
       "id": "AKASHIC-CT-030",
       "status": "implemented-local",
-      "summary": "Per-key incremental manifest records replay after writer release and store reopen."
+      "summary": "Per-key incremental authority replays after writer release and reopen across both fast-create blob xattrs and explicit stage/publish sidecars; tombstones remain sidecars."
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Tests/AkashicDiskTests/FileBlobStoreManifestV2Tests.swift",
         "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
       ],
       "id": "AKASHIC-CT-031",
@@ -289,7 +292,7 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Tests/AkashicDiskTests/FileBlobStoreManifestV2Tests.swift",
         "Sources/AkashicDisk/FileBlobStore.swift"
       ],
       "id": "AKASHIC-CT-032",
@@ -298,21 +301,21 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Tests/AkashicDiskTests/FileBlobStoreManifestV2Tests.swift",
         "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
       ],
       "id": "AKASHIC-CT-033",
       "status": "implemented-local",
-      "summary": "Multi-key maintenance emits a complete generation checkpoint and removes obsolete incremental records."
+      "summary": "A multi-key checkpoint retires prior-generation logical delta authority immediately; obsolete sidecar deletion is amortized as bounded physical cleanup debt while stale xattrs are rejected by generation."
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Tests/AkashicDiskTests/FileBlobStoreManifestV2Tests.swift",
         "Sources/AkashicDisk/FileBlobStore.swift"
       ],
       "id": "AKASHIC-CT-034",
       "status": "implemented-local",
-      "summary": "A stale incremental record from an older generation cannot resurrect an entry after checkpoint publication."
+      "summary": "A stale incremental sidecar from an older generation cannot resurrect an entry after checkpoint publication."
     },
     {
       "evidencePaths": [
@@ -330,7 +333,7 @@
       ],
       "id": "AKASHIC-CT-036",
       "status": "implemented-local",
-      "summary": "A global limit change locks all shards in canonical order, restores an exact partition and reports precise removals."
+      "summary": "A global limit change locks all shards in canonical order, releases only the resident cost required by the new aggregate bound, resets the global unassigned pool to the exact remaining capacity and reports precise removals."
     },
     {
       "evidencePaths": [
@@ -344,11 +347,11 @@
       "evidencePaths": [
         "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
         "Sources/AkashicMemory/ShardedMemoryCache.swift",
-        "Sources/AkashicMemory/ShardedMemoryBudget.swift"
+        "Sources/AkashicMemory/ShardedMemoryShard.swift"
       ],
       "id": "AKASHIC-CT-038",
       "status": "implemented-local",
-      "summary": "An entry larger than one shard budget but no larger than the global budget uses the all-shard redistribution slow path; a globally oversized replacement leaves a miss. Int.max aggregate and replacement cases use subtraction-based capacity checks and cannot overflow before eviction."
+      "summary": "An entry larger than any initial bucket-sizing share but no larger than the global budget can claim global unassigned capacity and, when required, release exact resident deficit across shards; a globally oversized replacement leaves a miss. Int.max aggregate and replacement cases use subtraction-based capacity checks and cannot overflow before eviction."
     },
     {
       "evidencePaths": [
@@ -381,20 +384,1389 @@
       "evidencePaths": [
         "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
         "Sources/AkashicMemory/ShardedMemoryCache.swift",
-        "Sources/AkashicMemory/ShardedMemoryBudget.swift"
+        "Sources/AkashicMemory/ShardedMemoryShard.swift",
+        "Sources/CAkashicAtomics/include/CAkashicAtomics.h"
       ],
       "id": "AKASHIC-CT-042",
       "status": "implemented-local",
-      "summary": "Concurrent shard traffic, large-entry redistribution, filtered purge and repeated global resizing complete without deadlock and finish within the active global bound."
+      "summary": "Concurrent shard traffic, global-spare claims/releases, cross-shard deficit reclamation, filtered purge and repeated global resizing complete without deadlock and finish within the active aggregate bound."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift",
+        "Sources/AkashicMemory/ShardedMemoryShard.swift",
+        "Sources/CAkashicAtomics/include/CAkashicAtomics.h"
+      ],
+      "id": "AKASHIC-CT-043",
+      "status": "implemented-local",
+      "summary": "Global spare capacity is reusable by a skewed shard before any shard-local premature eviction, so hash routing does not reduce effective global capacity."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift",
+        "Sources/AkashicMemory/ShardedMemoryShard.swift"
+      ],
+      "id": "AKASHIC-CT-044",
+      "status": "implemented-local",
+      "summary": "Cost released by one shard returns to the global unassigned pool and can be claimed by another shard without avoidable local eviction."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestLegacyTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestRecord.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-045",
+      "status": "implemented-local",
+      "summary": "Legacy incremental record schema v1 remains readable after the compact v2 writer upgrade and restores the same verified blob."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestLegacyTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestRecord.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-046",
+      "status": "implemented-local",
+      "summary": "Compact v2 create records omit the duplicate manifest key, remain bounded to 224 bytes in the retained 4 KiB fixture, and reject a valid-hex filename key that does not match the decoded partition and digest."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestCompactTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestRecord.swift"
+      ],
+      "id": "AKASHIC-CT-047",
+      "status": "implemented-local",
+      "summary": "A future compact incremental-record schema fails closed as invalidManifest."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestLegacyTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestRecord.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-048",
+      "status": "implemented-local",
+      "summary": "A legacy v1 tombstone removes an entry from the current snapshot during replay, so upgrade cannot resurrect a previously deleted object."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestLegacyTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestRecord.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-049",
+      "status": "implemented-local",
+      "summary": "Compact v2 tombstones persist a 32-byte key verifier; renaming a tombstone to another valid manifest-key filename fails closed instead of transferring deletion authority."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift"
+      ],
+      "id": "AKASHIC-CT-050",
+      "status": "implemented-local",
+      "summary": "When a large insert needs cross-shard capacity, the slow path releases only the actual global deficit instead of evenly repartitioning unrelated donor shards and over-evicting resident hot data."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift"
+      ],
+      "id": "AKASHIC-CT-051",
+      "status": "implemented-local",
+      "summary": "An intentionally skewed resident whose cost exactly equals a shrunken global limit survives 75\u219260 and subsequent 60\u219275 resize operations with zero removals, fixing the equal-cost/no-op resize boundary."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift",
+        "Sources/AkashicMemory/ShardedMemoryShard.swift"
+      ],
+      "id": "AKASHIC-CT-052",
+      "status": "implemented-local",
+      "summary": "Global limit shrink chooses the best immediate victim among each shard's current legal SIEVE candidate instead of preserving low-index shards first; a 102\u2192101 shrink releases one 1-cost entry rather than an avoidable 100-cost resident."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift",
+        "Sources/AkashicMemory/ShardedMemoryShard.swift"
+      ],
+      "id": "AKASHIC-CT-053",
+      "status": "implemented-local",
+      "summary": "Cross-shard insert deficit reclamation uses the same best-fit selection across donor shards; a one-unit deficit chooses an exact 1-cost legal donor victim instead of over-releasing a 100-cost victim that merely appears earlier in target-relative ring order."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryShard.swift"
+      ],
+      "id": "AKASHIC-CT-054",
+      "status": "implemented-local",
+      "summary": "All-resident-visited SIEVE state advances by epoch instead of clearing every visited bit; 64 repeated all-hit then eviction rounds preserve classic single-cache SIEVE observable semantics."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreSecurityTests.swift",
+        "Sources/AkashicCore/StorageDirectorySecurity.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift"
+      ],
+      "id": "AKASHIC-CT-055",
+      "status": "implemented-local",
+      "summary": "Reopen repairs an unsafe 0644 published-blob mode back to the private mode while symlink substitution remains fail closed."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestLegacyTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestRecord.swift"
+      ],
+      "id": "AKASHIC-CT-056",
+      "status": "implemented-local",
+      "summary": "A generation-scoped sidecar filename must carry the same generation as its decoded record; filename-generation tampering fails closed."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestV2Tests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-057",
+      "status": "implemented-local",
+      "summary": "Once a newer snapshot generation is authoritative, corrupt content in an older generation-scoped sidecar is not decoded and cannot regain logical authority."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestCompactTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-058",
+      "status": "implemented-local",
+      "summary": "A hand-constructed verbose manifest schema 2 opens and reads correctly, then a checkpoint migrates it to compact schema 3 without retaining the verbose entries representation."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestCompactTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-059",
+      "status": "implemented-local",
+      "summary": "Compact manifest schema 3 rejects two logical entries that claim the same PhysicalBlobID."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestCompactTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-060",
+      "status": "implemented-local",
+      "summary": "Compact manifest schema 3 preserves the pre-existing zero-byte blob contract through checkpoint and reopen."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestCompactTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-061",
+      "status": "implemented-local",
+      "summary": "Incremental replay rejects final duplicate physical ownership across distinct logical keys even when individual records decode correctly."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestCompactTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreIdentity.swift"
+      ],
+      "id": "AKASHIC-CT-062",
+      "status": "implemented-local",
+      "summary": "The allocation-reduced manifest-key implementation is byte-identical to the legacy key protocol across retained byte-count boundaries."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestXattrTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift"
+      ],
+      "id": "AKASHIC-CT-063",
+      "status": "implemented-local",
+      "summary": "Fast-create xattr authority binds the xattr-name manifest key to the partition+digest key decoded from its record value; a valid-format wrong key fails closed."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestXattrTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift"
+      ],
+      "id": "AKASHIC-CT-064",
+      "status": "implemented-local",
+      "summary": "Fast-create xattr authority binds record generation to the generation encoded in the xattr name; future or mismatched generation fails closed."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestXattrTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift"
+      ],
+      "id": "AKASHIC-CT-065",
+      "status": "implemented-local",
+      "summary": "A fast-create xattr record must claim the same PhysicalBlobID as its UUID carrier file; cross-carrier identity tampering fails closed."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestXattrTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift"
+      ],
+      "id": "AKASHIC-CT-066",
+      "status": "implemented-local",
+      "summary": "Repairing the same logical key onto a new physical carrier advances sequence but preserves one distinct delta-key budget unit, so replacement frequency cannot spuriously force checkpoints."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreManifestXattrTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift",
+        "Sources/AkashicCrashProbe/AkashicCrashProbe.swift",
+        "Tools/Crash/verify_fast_commit_crash_matrix.py",
+        "Tools/Crash/verify_fault_injection_report.py",
+        "scripts/verify-process-crash-matrix.sh",
+        "scripts/verify-fault-injection.sh"
+      ],
+      "id": "AKASHIC-CT-067",
+      "status": "implemented-local-process-crash",
+      "summary": "Corrupt fast-xattr record values fail closed, and an independent 11-point fast-commit child-process crash matrix recovers only miss states before the UUID rename and verified hit states after it. This is process-crash evidence only, not a power-loss claim."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryShard.swift"
+      ],
+      "id": "AKASHIC-CT-068",
+      "status": "implemented-local",
+      "summary": "A 24-seed, 600-step-per-seed shard-local state-machine differential compares the nonmutating two-victim forecast with the actual next two SIEVE removals across insert, hit, remove, wrap and visited-epoch states."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift",
+        "Sources/AkashicMemory/ShardedMemoryShard.swift"
+      ],
+      "id": "AKASHIC-CT-069",
+      "status": "implemented-local",
+      "summary": "Global resize preserves the immediate greedy victim-cost class but, within an equal-cost tie, may choose a shard whose legal successor exactly satisfies the remaining deficit; the retained [1,6] versus [1,8] fixture releases 9 instead of 16."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicMemoryTests/ShardedMemoryCacheTests.swift",
+        "Sources/AkashicMemory/ShardedMemoryCache.swift",
+        "Sources/AkashicMemory/ShardedMemoryShard.swift"
+      ],
+      "id": "AKASHIC-CT-070",
+      "status": "implemented-local",
+      "summary": "Cross-shard insert uses the same exact-successor equal-cost tie rule: a 9-unit donor deficit removes the [1,8] chain exactly, preserves the competing [1,6] chain, and admits the incoming 9-cost object without excess release."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreFastXattrFaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommitOperations.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift"
+      ],
+      "id": "AKASHIC-CT-071",
+      "status": "implemented-local",
+      "summary": "Only explicit xattr representation incompatibility (ENOTSUP/E2BIG) may fall back to the sidecar fast transaction. Injected ENOSPC/EIO preserve their POSIX code, publish no blob or authority, leave no fast temporary files, and remain a miss after reopen."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreFastCommitFaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommitOperations.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift"
+      ],
+      "id": "AKASHIC-CT-072",
+      "status": "implemented-local",
+      "summary": "Fast-commit close failures relinquish descriptor ownership after the first close call and never retry the same descriptor, including both the normal xattr path and the unsupported-xattr sidecar fallback path."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreFastCommitFaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommitOperations.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift"
+      ],
+      "id": "AKASHIC-CT-073",
+      "status": "implemented-local",
+      "summary": "Deterministic fast-commit syscall injection covers temporary open failure, write EINTR plus partial writes, write ENOSPC after a successful prefix, file-fsync EINTR/EIO and rename ENOSPC. Retries converge where permitted; every hard pre-rename failure leaves a clean logical and physical miss."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreFastCommitFaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommitOperations.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-074",
+      "status": "implemented-local",
+      "summary": "Injected parent-directory open or fsync failure after the fast UUID rename preserves the original POSIX error but freezes the stale actor as reopen-required; the already-visible UUID+xattr carrier remains recoverable by a fresh FileBlobStore instance. This is visible-state recovery evidence, not a power-loss claim."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreFastCommitFaultTests.swift",
+        "Tests/AkashicCoreTests/DurableFileWriterFaultTests.swift",
+        "Sources/AkashicCore/DurableFileWriter.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-075",
+      "status": "implemented-local",
+      "summary": "Any logical-authority publication that crosses its rename visibility point but returns an error before actor state converges freezes that writer until reopen. Fast xattr, xattr-unsupported sidecar fallback, explicit sidecar publication, afterManifestPublished failure and full-checkpoint generation advance all reject further stateful access; poisoned discard cannot unlink a staged blob that visible authority may reference."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreFastCommitFaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-076",
+      "status": "implemented-local",
+      "summary": "A single-key tombstone whose sidecar rename becomes visible before an injected error freezes the stale-hit actor. Reopen replays the higher-sequence tombstone, preserves the logical miss and removes the now-unreferenced payload instead of allowing the old actor to resurrect or reuse stale sequence state."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreFastCommitFaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift"
+      ],
+      "id": "AKASHIC-CT-077",
+      "status": "implemented-local",
+      "summary": "A same-key repair can leave old and newly published current-generation xattr carriers physically present when directory durability fails. The stale actor freezes; reopen orders the unique sequences, selects the newer PhysicalBlobID, verifies the requested bytes and removes the older unreferenced carrier."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-078",
+      "status": "implemented-local",
+      "summary": "A single-key logical remove remains authoritative when a real macOS UF_IMMUTABLE flag makes payload unlink fail with EPERM. Same-actor and reopened reads remain misses, bootstrap tolerates the unreferenced physical debt, strict garbage collection reports storageUnavailable while cleanup is blocked, and after the flag is repaired GC removes the exact orphan bytes."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-079",
+      "status": "implemented-local",
+      "summary": "A partition-wide removeAll keeps the logical revoke atomic when one payload is physically undeletable: all logical reads remain misses, the unrelated cleanup failure does not block reopen, the immutable orphan remains non-authoritative, and explicit GC repays it after the external filesystem condition is repaired."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-080",
+      "status": "implemented-local",
+      "summary": "A same-key repair stays authoritative on its new PhysicalBlobID when cleanup of the corrupt old carrier is blocked by UF_IMMUTABLE. Reopen verifies the new bytes while tolerating the old unreferenced physical debt, and strict GC later removes only the old carrier while retaining the live logical reference."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift",
+        "Sources/AkashicCore/StorageDirectorySecurity.swift"
+      ],
+      "id": "AKASHIC-CT-081",
+      "status": "implemented-local",
+      "summary": "Bootstrap tolerates failed orphan cleanup only for a canonical UUID-named Akashic payload that still validates as a private, current-user-owned, single-link regular file. An undeletable foreign temporary entry remains a storageUnavailable filesystem-identity failure rather than being silently reclassified as physical cleanup debt; an ENOENT validation race is treated as already repaid."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-082",
+      "status": "implemented-local",
+      "summary": "When a logical delete leaves an undeletable lower-sequence payload carrier, schema 3 seals the committed miss into the next full snapshot generation before returning success. Deleting the now-stale tombstone sidecar cannot make the surviving create xattr authoritative again."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-083",
+      "status": "implemented-local",
+      "summary": "A same-key replacement whose old payload cannot be unlinked seals the new logical state into the next manifest generation. If the new payload is later lost, reopen converges to a miss instead of rolling back to the undeletable old PhysicalBlobID and its lower-sequence create carrier."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-084",
+      "status": "implemented-local",
+      "summary": "A single-key removeAll that encounters payload cleanup debt generation-seals the partition revoke. Removing the retired tombstone carrier afterward cannot resurrect the lower-sequence payload xattr on reopen."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-085",
+      "status": "implemented-local",
+      "summary": "Single-victim garbage collection keeps the logical revoke authoritative when physical deletion fails: it seals the final manifest generation before surfacing the strict storageUnavailable maintenance error, so later loss of a retired tombstone carrier cannot restore the victim."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-086",
+      "status": "implemented-local",
+      "summary": "Quarantining a corrupt but undeletable payload seals the removed logical authority into a later snapshot generation. Deleting the retired tombstone carrier cannot make the corrupt payload's older create xattr regain a logical locator."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePhysicalDebtTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-087",
+      "status": "implemented-local",
+      "summary": "If the protective cleanup-debt snapshot seal itself fails either before or after the manifest rename, the operation returns storageUnavailable and the writer becomes reopen-required. Reopen converges from disk authority to the committed miss instead of allowing stale actor state to continue mutating the store."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestDirectoryHead.swift"
+      ],
+      "id": "AKASHIC-CT-088",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 directory-head record xattr identities use a canonical bounded Base32 manifest-key encoding with generation and global sequence, avoiding the real xattr-name-length failure found by the earlier hex-key prototype."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestDirectoryHead.swift"
+      ],
+      "id": "AKASHIC-CT-089",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 recovery requires both checksummed generation heads and rejects missing, malformed or ambiguous head state instead of silently falling back to an older logical commit point."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestDirectoryHead.swift"
+      ],
+      "id": "AKASHIC-CT-090",
+      "status": "implemented-local-scope-limited",
+      "summary": "Directory-head recovery decodes only head-selected latest committed record bodies; stale and higher-sequence uncommitted bodies do not regain logical authority merely by remaining physically present."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestDirectoryHead.swift"
+      ],
+      "id": "AKASHIC-CT-091",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 recovery rejects duplicate committed global record sequence numbers, preserving a single total order for delta authority across different logical keys."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestDirectoryHead.swift"
+      ],
+      "id": "AKASHIC-CT-092",
+      "status": "implemented-local-scope-limited",
+      "summary": "A schema4 snapshot persists its explicit directoryHeadV2 delta-carrier profile plus a 32-byte semantic corruption seal, so recovery neither guesses the current-generation carrier protocol nor accepts an unsealed snapshot as the current candidate format."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-093",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 snapshots with a missing, malformed or future delta-carrier profile fail closed; candidate format recognition never silently degrades to schema3 carrier interpretation."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadMigration.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-094",
+      "status": "implemented-local-scope-limited",
+      "summary": "An explicitly requested schema3-to-schema4 candidate migration first preserves the fully replayed logical state in a new snapshot generation and then establishes two empty checksummed heads before any schema4 delta is allowed."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadMigration.swift"
+      ],
+      "id": "AKASHIC-CT-095",
+      "status": "implemented-local-scope-limited",
+      "summary": "When directory xattrs are explicitly unsupported, schema4 candidate migration emits no schema4 snapshot or delta authority, keeping the current default schema3 store unchanged rather than entering a mixed carrier state."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadMigration.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-096",
+      "status": "implemented-local-scope-limited",
+      "summary": "If empty-head initialization fails after the schema4 snapshot is already visible, the writer is poisoned and must reopen; it cannot continue from an actor state that lacks the new generation's required commit heads."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-097",
+      "status": "implemented-local-scope-limited",
+      "summary": "After explicit migration, create and tombstone mutations use only directory-head authority, survive reopen, and do not fall back to schema3 payload-xattr or sidecar carriers within the schema4 generation."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestDirectoryHead.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-098",
+      "status": "implemented-local-scope-limited",
+      "summary": "Deleting the record body selected by the committed schema4 head causes reopen to fail invalidManifest through commitment mismatch instead of silently losing a create or resurrecting an older logical state."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-099",
+      "status": "implemented-local-scope-limited",
+      "summary": "Consecutive schema4 multi-key checkpoints retire older directory-head metadata debt before publishing another generation, preventing checkpoint-only workloads from stacking unbounded stale authority metadata."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadMigration.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-100",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 reopen reconstructs older-generation directory-head cleanup debt from xattr identities, so a process restart cannot forget physical metadata debt while retaining the new logical generation."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadMigration.swift"
+      ],
+      "id": "AKASHIC-CT-101",
+      "status": "implemented-local-scope-limited",
+      "summary": "Failure to remove stale directory-head metadata blocks the next checkpoint before the new snapshot authority is published; generation and logical state remain unchanged and the consistent writer can retry after the external condition is repaired."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift"
+      ],
+      "id": "AKASHIC-CT-102",
+      "status": "implemented-local-scope-limited",
+      "summary": "A directory-head record-body xattr write failure freezes the writer and reopen converges to the old logical state; a possibly ambiguous failed body publication never reuses sequence state in the same writer."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-103",
+      "status": "implemented-local-scope-limited",
+      "summary": "If a schema4 record body is written but the inactive-head replacement fails, the body remains uncommitted and reopen selects the old head and old logical state while identifying the higher-sequence body as debris."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-104",
+      "status": "implemented-local-scope-limited",
+      "summary": "If the schema4 head update succeeds but directory synchronization fails, the stale actor freezes and reopen converges to the new head-selected logical state; the result is process-visible recovery evidence, not a power-loss claim."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicCore/DurableFileWriter.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-105",
+      "status": "implemented-local-scope-limited",
+      "summary": "A non-checkpoint schema4 commit may defer the payload rename's parent-directory sync and coalesce it with the directory-head record/head durability boundary while preserving the public stage API's original full durability."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicCore/DurableFileWriter.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-106",
+      "status": "implemented-local-scope-limited",
+      "summary": "The 512th distinct schema4 delta and sequence-overflow checkpoint boundaries disable coalescing and retain an independent blobs-directory sync because a root-manifest directory fsync cannot make the payload rename durable."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestOwnership.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-107",
+      "status": "implemented-local-scope-limited",
+      "summary": "Across create, remove and same-key repair transitions, the schema4 O(1) PhysicalBlobID ownership cache and live-byte total match a fresh full-manifest ownership proof after every tested mutation."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestOwnership.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-108",
+      "status": "implemented-local-scope-limited",
+      "summary": "The schema4 single-key ownership transition rejects a second logical key that attempts to claim an already-owned PhysicalBlobID before any record or head publication, leaving sequence and authority unchanged."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestOwnership.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-109",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 maintains an exact cached live-byte total through single-key authority transitions and uses it for the normal soft-limit gate; trim still enforces the configured bound and full proof remains the cache rebuild oracle."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestOwnership.swift"
+      ],
+      "id": "AKASHIC-CT-110",
+      "status": "implemented-local",
+      "summary": "The default schema3 fast path now maintains the same exact live-byte cache used by the storage resource gate, eliminating a full-manifest byte reduction on ordinary commits while preserving soft-limit trimming semantics."
+    },
+    {
+      "evidencePaths": [
+        "Tools/Crash/verify_directory_head_crash_matrix.py",
+        "scripts/verify-directory-head-process-crash-matrix.sh",
+        "Sources/AkashicCrashProbe/AkashicCrashProbe.swift"
+      ],
+      "id": "AKASHIC-CT-111",
+      "status": "implemented-local-process-crash",
+      "summary": "A separate release-binary schema4 process-crash matrix covers payload-renamed, record-written, head-written and directory-synced boundaries with expected miss, miss, hit and hit recovery respectively; it explicitly carries processCrashClaim=true and powerLossClaim=false."
+    },
+    {
+      "evidencePaths": [
+        "Tools/Compatibility/verify_schema4_downgrade.py",
+        "scripts/verify-schema4-downgrade.sh",
+        "Tools/Compatibility/verify_schema4_historical_tag.py",
+        "scripts/verify-schema4-historical-tag.sh"
+      ],
+      "id": "AKASHIC-CT-112",
+      "status": "partial-local",
+      "summary": "Both a source-bound schema3-capability control and an unmodified rebuild of annotated historical tag 0.1.0-alpha.5 reject a committed schema4 store with unsupportedSchema while the current reader recovers the same store as a hit; the historical-tag control also verifies manifest.json bytes are unchanged by the rejected open. This strengthens the downgrade fail-closed boundary with exact tagged source, but no original distributed historical binary artifact is qualified, so automatic migration remains unqualified."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreDirectoryHeadMigration.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-113",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 migration preserves validated legacy sidecar cleanup debt from the retired schema3 generation and a later mutation repays that physical metadata without restoring logical authority."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-114",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 reopen rediscovers valid retired sidecar metadata as physical cleanup debt during reconciliation, so process restart does not silently forget debt that remains on disk."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-115",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 cleanup never adopts or deletes a symlink sidecar lookalike as Akashic metadata; the foreign target remains untouched."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-116",
+      "status": "implemented-local-scope-limited",
+      "summary": "Explicit schema4 garbage collection is the strict physical-maintenance surface for legacy sidecars and can repay valid sidecar debt even when no logical mutation is required."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-117",
+      "status": "implemented-local-scope-limited",
+      "summary": "Strict schema4 garbage collection rejects symlink sidecar lookalikes instead of deleting them under the legacy metadata namespace."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-118",
+      "status": "implemented-local-scope-limited",
+      "summary": "Strict schema4 cleanup rejects regular-file sidecar lookalikes whose bounded body does not validate as matching retired Akashic manifest metadata."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ],
+      "id": "AKASHIC-CT-119",
+      "status": "implemented-local-scope-limited",
+      "summary": "Invalid legacy sidecar lookalikes are never permission-repaired as a side effect of cleanup discovery; physical-maintenance validation does not grant Akashic ownership to malformed files."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-120",
+      "status": "implemented-local-scope-limited",
+      "summary": "A valid legacy sidecar with permission drift remains recognizable as retired Akashic metadata and can be removed by strict schema4 maintenance without broadening ownership checks for invalid lookalikes."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-121",
+      "status": "implemented-local-scope-limited",
+      "summary": "Explicit schema4 garbage collection validates and durably removes retired schema3 manifest xattrs from still-live payload carriers while preserving the blob logical hit and PhysicalBlobID ownership."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-122",
+      "status": "implemented-local-scope-limited",
+      "summary": "Strict schema4 garbage collection fails closed on a corrupt retired manifest-family payload xattr and leaves the malformed metadata in place rather than disguising corruption as successful cleanup."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ],
+      "id": "AKASHIC-CT-123",
+      "status": "implemented-local-scope-limited",
+      "summary": "If filesystem immutability blocks retirement of a valid legacy payload manifest xattr, schema4 garbage collection reports storageUnavailable; after the external condition is repaired the same maintenance operation retries successfully without changing logical authority."
+    },
+    {
+      "evidencePaths": [
+        "Sources/AkashicCrashProbe/AkashicCrashProbe.swift",
+        "Tools/Crash/verify_directory_head_checkpoint_crash_matrix.py",
+        "scripts/verify-directory-head-checkpoint-process-crash-matrix.sh"
+      ],
+      "id": "AKASHIC-CT-124",
+      "status": "implemented-local-process-crash",
+      "summary": "A separate seven-point schema4 distinct-key checkpoint process-crash matrix proves old-state recovery before snapshot rename and new-state recovery from snapshot rename through both empty-head writes and the final directory sync; it is process-crash evidence only, not power-loss evidence."
+    },
+    {
+      "evidencePaths": [
+        "Sources/AkashicCrashProbe/AkashicCrashProbe.swift",
+        "Tools/Crash/verify_directory_head_checkpoint_recovery_crash.py",
+        "scripts/verify-directory-head-checkpoint-recovery-crash.sh"
+      ],
+      "id": "AKASHIC-CT-125",
+      "status": "implemented-local-process-crash",
+      "summary": "Schema4 recovery of a checkpoint snapshot with zero current-generation heads remains convergent when the recovery process itself crashes after the first and then the second repair-head write; the physical progression 0 to 1 to 2 heads ends in a complete normal reopen."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreBootstrapFreshness.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-126",
+      "status": "implemented-local",
+      "summary": "A missing root manifest on an established schema3 store fails closed before reconciliation; surviving payload evidence remains physically untouched instead of being reclassified as an orphan under a new empty manifest."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreBootstrapFreshnessTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreBootstrapFreshness.swift"
+      ],
+      "id": "AKASHIC-CT-127",
+      "status": "implemented-local-scope-limited",
+      "summary": "A logical-empty schema4 store with no payload files but valid directory-head metadata is still established physical state; deleting its root manifest fails closed rather than silently reinitializing schema3."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreBootstrapFreshnessTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreBootstrapFreshness.swift"
+      ],
+      "id": "AKASHIC-CT-128",
+      "status": "implemented-local",
+      "summary": "Malformed Akashic directory-head family metadata on an otherwise empty blobs directory blocks missing-manifest initialization; family-shaped corruption cannot be ignored as unrelated filesystem metadata."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreBootstrapFreshnessTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreBootstrapFreshness.swift"
+      ],
+      "id": "AKASHIC-CT-129",
+      "status": "implemented-local",
+      "summary": "A physically fresh store remains initializable when directory extended attributes explicitly report ENOTSUP/EOPNOTSUPP, preserving the schema3 sidecar-compatible media fallback without weakening established-store detection."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreBootstrapFreshnessTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreBootstrapFreshness.swift"
+      ],
+      "id": "AKASHIC-CT-130",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema4 directory-head physical evidence prevents rollback to a legacy schema2/3 root manifest: bootstrap fails closed instead of silently downgrading delta-carrier semantics and ignoring newer committed authority."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreBootstrapFreshnessTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestDirectoryHead.swift"
+      ],
+      "id": "AKASHIC-CT-131",
+      "status": "implemented-local-scope-limited",
+      "summary": "The unreleased schema4 directory-head-v2 snapshot carries a semantic SHA-256 corruption seal over profile, generation and canonical compact entries. A raw generation-field change without a matching seal fails closed before directory-head replay or orphan reconciliation can discard a committed delta payload."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryHeadTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestDirectoryHead.swift"
+      ],
+      "id": "AKASHIC-CT-132",
+      "status": "implemented-local-scope-limited",
+      "summary": "Directory-head-v2 snapshot decoding rejects compact-entry modification when the persisted semantic seal is unchanged and rejects the superseded unsealed directory-head-v1 carrier profile."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreConcurrentReadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreReadIO.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift"
+      ],
+      "id": "AKASHIC-CT-133",
+      "status": "implemented-local-scope-limited",
+      "summary": "Verified payload reads leave the serial store actor for bounded filesystem read and digest work, while the dedicated read scheduler admits at most four active blocking reads."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreConcurrentReadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift"
+      ],
+      "id": "AKASHIC-CT-134",
+      "status": "implemented-local-scope-limited",
+      "summary": "If a read snapshots an old physical carrier but a concurrent remove completes before that carrier can be opened, the resumed read returns notFound and does not quarantine stale authority."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreConcurrentReadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift"
+      ],
+      "id": "AKASHIC-CT-135",
+      "status": "implemented-local-scope-limited",
+      "summary": "If a same-key repair changes PhysicalBlobID while an old-carrier read is suspended, failure from the old carrier cannot quarantine the replacement and the read retries the current carrier at most once."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreConcurrentReadCompletionTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift"
+      ],
+      "id": "AKASHIC-CT-136",
+      "status": "implemented-local-scope-limited",
+      "summary": "A verified read completed on the old carrier before a concurrent remove may return those snapshot bytes after actor resumption, while subsequent reads observe notFound and stale access state is not recreated."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreConcurrentReadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreReadIO.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ],
+      "id": "AKASHIC-CT-137",
+      "status": "implemented-local-scope-limited",
+      "summary": "Verified reads are bounded by both worker count and in-flight payload bytes; a request larger than the byte budget runs exclusively instead of multiplying its allocation by the four-worker width."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreConcurrentReadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreReadIO.swift"
+      ],
+      "id": "AKASHIC-CT-138",
+      "status": "implemented-local-scope-limited",
+      "summary": "Cancelling a verified read while it is still pending removes it before blocking filesystem I/O, so a cancelled FIFO head does not consume a worker or delay later admitted reads."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreConcurrentReadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreReadIO.swift"
+      ],
+      "id": "AKASHIC-CT-139",
+      "status": "implemented-local-scope-limited",
+      "summary": "Pending read cancellation uses a token-to-slot index so reverse-order cancellation storms behind a blocked read avoid linear FIFO scans; a 256-request storm admits only the blocked first read and the sole uncancelled survivor to blocking filesystem I/O while preserving FIFO admission semantics."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreConcurrentReadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreReadIO.swift"
+      ],
+      "id": "AKASHIC-CT-140",
+      "status": "implemented-local-scope-limited",
+      "summary": "The verified-read scheduler hard-bounds pending requests independently of active worker and byte budgets. Queue saturation fails a new read with storageUnavailable before blocking I/O; draining the queue restores admission without poisoning store authority."
+    },
+    {
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreConcurrentReadTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreReadIO.swift"
+      ],
+      "id": "AKASHIC-CT-141",
+      "status": "implemented-local-scope-limited",
+      "summary": "Pending-read backing storage remains bounded even when an uncancelled FIFO head cannot run and later requests repeatedly enqueue then cancel. Tombstone-heavy storage is compacted and the token index rebuilt before slots exceed twice the configured live-pending cap, preserving FIFO semantics with amortized bounded compaction work."
+    },
+    {
+      "id": "AKASHIC-CT-142",
+      "status": "implemented-local-scope-limited",
+      "summary": "The research V2 fixed-width binary base round-trips exact logical and PhysicalBlobID state and rejects payload corruption under its bounded wire contract.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestBinaryBase.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-143",
+      "status": "implemented-local-scope-limited",
+      "summary": "Schema5 V1 accepts only JSON base descriptors and V2 accepts only binary-base descriptors; mixed profile/base-kind topologies fail closed.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-144",
+      "status": "implemented-local-scope-limited",
+      "summary": "The V2 binary-base filename family is an exact lowercase UUID-shaped Akashic namespace; unreferenced valid candidates are bounded physical debt and malformed names are not adopted.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestSegmentCleanup.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-145",
+      "status": "implemented-local-scope-limited",
+      "summary": "A package-only V2 root recovers a binary base to the exact semantic state and preserves every PhysicalBlobID.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-146",
+      "status": "implemented-local-scope-limited",
+      "summary": "The public FileBlobStore open contract remains V1-only while V2 is a research candidate; V2 qualification requires an explicit package-only open seam.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreBootstrapManifest.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-147",
+      "status": "implemented-local-scope-limited",
+      "summary": "A V2 binary base replays the existing runV1 suffix format exactly, preserving one run grammar across V1 and V2 base representations.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-148",
+      "status": "implemented-local-scope-limited",
+      "summary": "V1-to-V2 prepare writes and verifies only a binary-base candidate; it does not publish root authority and preserves the segmented generation and semantic commitment.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestBinaryBaseTransition.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-149",
+      "status": "implemented-local-scope-limited",
+      "summary": "Explicit V2 root publication preserves logical state and generation, after which strict segment GC retires only the old V1 base/run physical topology.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestBinaryBaseTransition.swift",
+        "Sources/AkashicDisk/SegmentedManifestSegmentCleanup.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-150",
+      "status": "implemented-local-scope-limited",
+      "summary": "Injected root-write faults around V1-to-V2 publication converge on one complete topology: pre-rename remains V1, post-rename is V2, with exact recovered state and bounded debt cleanup.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-151",
+      "status": "implemented-local-scope-limited",
+      "summary": "Appending an epoch run to a V2 root preserves the V2 profile and binary-base descriptor instead of leaking the V1 default root builder into mutation.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-152",
+      "status": "implemented-local-scope-limited",
+      "summary": "V2 binary compaction preparation folds a frozen run history into a verified binary candidate without changing the authoritative root before publication.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/SegmentedManifestBinaryBaseTransition.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-153",
+      "status": "implemented-local-scope-limited",
+      "summary": "The package-only V2 qualification open seam exercises the real FileBlobStore read/commit/remove/reopen path while the public open contract remains V1-only.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreBootstrapManifest.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-154",
+      "status": "implemented-local-scope-limited",
+      "summary": "A V2 FileBlobStore survives 512 distinct-key mutations, publishes a V2 run checkpoint, rejects the V1 JSON compactor, and compacts back to a binary base without changing generation or untouched PhysicalBlobID state.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-155",
+      "status": "implemented-local-scope-limited",
+      "summary": "V2 preserves logical partition isolation and the existing partition-scoped physical-dedup rule: equal digest across partitions retains distinct physical identity and independent removal authority.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-156",
+      "status": "implemented-local-scope-limited",
+      "summary": "At the real V2 FileBlobStore 512-key checkpoint boundary, injected manifest-root faults converge by rename visibility: prior mutations never roll back, the boundary mutation is absent pre-rename and present post-rename, and fresh bootstrap repays orphan segment debt.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseFaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-157",
+      "status": "implemented-local-scope-limited",
+      "summary": "At V2 binary compaction root publication, injected manifest faults preserve exact logical and PhysicalBlobID authority: pre-rename reopens the old binary-base-plus-run topology and post-rename reopens the compacted binary base, with unreferenced topology debt repaid.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseFaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift",
+        "Sources/AkashicDisk/SegmentedManifestBinaryBaseTransition.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-158",
+      "status": "implemented-local-scope-limited",
+      "summary": "The V3 baseBinaryV2 candidate uses the fixed 92-byte record wire, round-trips exact segmented state, and rejects a checksummed record corruption without broadening public adoption.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/SegmentedManifestBinaryBaseV2.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-159",
+      "status": "implemented-local-scope-limited",
+      "summary": "V1, V2, and V3 segmented roots keep their base-kind contracts disjoint, so a baseBinaryV2 descriptor cannot be accepted by an older root profile and older binary or JSON bases cannot masquerade as V3.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeTypes.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-160",
+      "status": "implemented-local-scope-limited",
+      "summary": "V3 baseBinaryV2 segment names are canonical and format-exact, while an otherwise valid but unreferenced V3 base candidate remains reclaimable physical debt rather than logical authority.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift",
+        "Sources/AkashicDisk/SegmentedManifestSegmentCleanup.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-161",
+      "status": "implemented-local-scope-limited",
+      "summary": "Explicit V1-to-V3 preparation is non-authoritative, and V3 root publication preserves generation, exact logical state, and existing PhysicalBlobID authority while retiring only obsolete physical topology.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/SegmentedManifestBinaryBaseV3Transition.swift",
+        "Sources/AkashicDisk/SegmentedManifestSegmentCleanup.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-162",
+      "status": "implemented-local-scope-limited",
+      "summary": "Publishing an epoch run on a V3 root preserves the V3 profile and baseBinaryV2 descriptor while advancing generation and replaying the exact intended mutation.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-163",
+      "status": "implemented-local-scope-limited",
+      "summary": "The public FileBlobStore open contract remains V1-only while an explicit package-only V3 qualification seam exercises real read, commit, reopen, and recovery paths without implying default adoption.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift",
+        "Sources/AkashicDisk/FileBlobStoreBootstrapManifest.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-164",
+      "status": "implemented-local-scope-limited",
+      "summary": "A V3 FileBlobStore survives the 512-key checkpoint boundary and V3-specific compaction, preserving the baseBinaryV2 profile, generation semantics, readable payloads, and untouched PhysicalBlobID state across reopen.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-165",
+      "status": "implemented-local-scope-limited",
+      "summary": "V3 keeps logical partition authority separate from physical identity: equal digest bytes across partitions receive distinct PhysicalBlobIDs, and removal in one partition cannot revoke the other partition.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/FileBlobStore.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-166",
+      "status": "implemented-local-scope-limited",
+      "summary": "At the real V3 FileBlobStore checkpoint root switch, injected manifest write faults converge by rename visibility without rolling back prior acknowledged authority; fresh bootstrap recovers one complete state and repays orphan segment debt.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3FaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-167",
+      "status": "implemented-local-scope-limited",
+      "summary": "At V3 compaction root publication, injected manifest faults preserve exact logical and PhysicalBlobID authority across the rename boundary, with old or new complete topology recoverable and unreferenced physical topology reclaimable.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3FaultTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift",
+        "Sources/AkashicDisk/SegmentedManifestBinaryBaseV3Transition.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-168",
+      "status": "implemented-local",
+      "summary": "Every acknowledged schema3 mutation preserves the configured blobs-directory scan bound, applies backpressure before overflow, and leaves previously acknowledged logical authority readable after reopen.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryScanRecoverabilityTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreRecoveryHeadroom.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-169",
+      "status": "implemented-local",
+      "summary": "Unreclaimed payload unlink debt consumes the same bounded reopen headroom as live payloads, so repeated logical revoke with immutable physical debt is backpressured before the next reopen becomes unscannable.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStorePayloadDebtGrowthTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreRecoveryHeadroom.swift",
+        "Sources/AkashicDisk/FileBlobStoreMaintenance.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-170",
+      "status": "implemented-local",
+      "summary": "When only one blobs-directory slot remains, schema3 commit can stage the payload and publish logical authority through the root checkpoint instead of attempting a sidecar temporary that would exceed the recovery scan bound.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryScanRecoverabilityTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestPersistence.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-171",
+      "status": "implemented-local",
+      "summary": "Successful physical discard returns one direct-child recovery slot immediately in O(1) actor state, allowing a new staged payload without a hot-path directory rescan while preserving the hard configured bound.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryScanRecoverabilityTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreRecoveryHeadroom.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-172",
+      "status": "implemented-local",
+      "summary": "A fast-commit failure before authority rename performs a bounded failure-only recount, so its two-slot crash-visible reservation cannot become phantom capacity debt after temporary cleanup.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryScanRecoverabilityTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreRecoveryHeadroom.swift",
+        "Sources/AkashicDisk/FileBlobStoreFastCommit.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-173",
+      "status": "implemented-local",
+      "summary": "A staged-payload durable-write failure performs a bounded failure-only recount, restoring exact same-instance recovery headroom when temporary cleanup succeeded instead of retaining a phantom payload slot.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryScanRecoverabilityTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreRecoveryHeadroom.swift",
+        "Sources/AkashicDisk/FileBlobStoreTransactions.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-174",
+      "status": "implemented-local",
+      "summary": "A schema3 manifest-sidecar failure before authority rename performs a bounded failure-only recount, preserving the staged payload as non-authoritative while returning cleaned metadata reservation headroom to the live store.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/FileBlobStoreDirectoryScanRecoverabilityTests.swift",
+        "Sources/AkashicDisk/FileBlobStoreRecoveryHeadroom.swift",
+        "Sources/AkashicDisk/FileBlobStoreManifestRecordPersistence.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-175",
+      "status": "implemented-local-scope-limited",
+      "summary": "The segmented V3 bounded-checkpoint boundary can publish a tombstone as the 512th distinct-key mutation without losing surviving entries; the deleted key remains absent and the same manifest shadow is recovered after reopen.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-176",
+      "status": "implemented-local-scope-limited",
+      "summary": "A segmented V3 bounded checkpoint can revoke one logical key and rebind the same PhysicalBlobID to a different partition-scoped key at the checkpoint boundary; the old authority remains absent and the transferred identity and bytes survive reopen.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-177",
+      "status": "implemented-local-scope-limited",
+      "summary": "Segmented V3 treats physical segment names as independent authority from deterministic content hashes, and checkpoint preseal remains correct when the post-preseal tail performs a cross-key PhysicalBlobID transfer; replay and reopen preserve the resulting authority.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpointPreseal.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-178",
+      "status": "implemented-local-scope-limited",
+      "summary": "The segmented V4 compound-run encoding applies a bounded prefix plus tail overlay with tombstone and PhysicalBlobID-transfer semantics, rejects compound descriptors under a V3 root, and fails closed when the compound bytes are corrupted.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/SegmentedManifestCompoundRun.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-179",
+      "status": "implemented-local-scope-limited",
+      "summary": "The segmented V4 compound-preseal path can freeze 480 distinct-key mutations, adopt the next 32-key tail, and publish one 512-record compound descriptor; V3 reopen rejects the V4 root while V4 reopen reproduces exact logical and PhysicalBlobID authority and leaves only referenced segment files.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCompoundPreseal.swift",
+        "Sources/AkashicDisk/SegmentedManifestCompoundRun.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-180",
+      "status": "implemented-local-scope-limited",
+      "summary": "When a segmented V4 compound preseal accumulates more than the bounded adopted-tail key budget, checkpoint publication falls back to the qualified ordinary run representation, reclaims the abandoned compound draft, and reopens with the same manifest authority.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCompoundPreseal.swift",
+        "Sources/AkashicDisk/SegmentedManifestCompoundRun.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift"
+      ]
+    },
+    {
+      "id": "AKASHIC-CT-181",
+      "status": "implemented-local-scope-limited",
+      "summary": "At the 64-run hard cap, a segmented V4 history containing both ordinary and compound runs can be replayed, synchronously collapsed under the V4 hard-cap policy, and continue checkpoint progress without losing any logical entry or PhysicalBlobID; reopen retains the progressed state and only referenced segment files remain.",
+      "evidencePaths": [
+        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedRunCollapse.swift",
+        "Sources/AkashicDisk/SegmentedManifestRunCollapse.swift",
+        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift",
+        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
+      ]
     }
   ],
-  "reviewedOn": "2026-08-02",
+  "reviewedOn": "2026-08-30",
   "rules": {
     "candidateDoesNotImplyDefault": true,
     "componentEvidenceDoesNotReplaceFoveaHostEvidence": true,
+    "directoryHeadCandidateDoesNotImplyAutomaticMigration": true,
+    "filesystemProcessIOBytesDoNotImplyPhysicalDeviceWrites": true,
     "partialIsNotComplete": true,
     "processCrashDoesNotImplyPowerLoss": true,
     "releaseQualified": false,
+    "snapshotCorruptionSealDoesNotImplyAuthenticatedStorage": true,
     "syscallFaultEvidenceDoesNotImplyFullFilesystemFaultCoverage": true
   },
   "schemaVersion": 1,

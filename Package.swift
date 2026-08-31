@@ -25,7 +25,15 @@ let package = Package(
             resources: [.process("PrivacyInfo.xcprivacy")],
             swiftSettings: concurrencySettings
         ),
-        .target(name: "AkashicMemory", swiftSettings: concurrencySettings),
+        .target(
+            name: "CAkashicAtomics",
+            publicHeadersPath: "include"
+        ),
+        .target(
+            name: "AkashicMemory",
+            dependencies: ["CAkashicAtomics"],
+            swiftSettings: concurrencySettings
+        ),
         .target(
             name: "AkashicDisk",
             dependencies: ["AkashicCore"],
@@ -39,7 +47,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "AkashicResourceProbe",
-            dependencies: ["AkashicCore", "AkashicDisk"],
+            dependencies: ["AkashicCore", "AkashicDisk", "AkashicMemory"],
             swiftSettings: concurrencySettings
         ),
         .testTarget(

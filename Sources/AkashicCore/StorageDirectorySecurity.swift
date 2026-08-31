@@ -25,6 +25,22 @@ package enum StorageDirectorySecurity {
         try validateRegularFile(url)
     }
 
+    /// 对已经位于受保护 store 目录内的已发布文件做 reopen 校准。
+    ///
+    /// 父目录在每次 open 时已经重新建立 backup-exclusion；这里保留 inode/type/link/owner
+    /// 检查，并且只在 POSIX mode 漂移时写回 0600。正常文件因此保持纯验证路径，避免
+    /// 每次 recovery 都为全部 resident blob 制造不必要的元数据写。
+    package static func validateOrRepairPublishedFilePermissions(_ url: URL) throws {
+        let status = try validatedRegularFileIdentityStatus(url)
+        if status.st_mode & 0o777 != 0o600 {
+            try FileManager.default.setAttributes(
+                fileAttributes,
+                ofItemAtPath: url.path
+            )
+        }
+        try validateRegularFile(url)
+    }
+
     /// 安全化由调用方刚以 `O_EXCL | O_NOFOLLOW` 创建并持有的私有普通文件。
     ///
     /// 备份排除由已验证的父目录承担；rename 保留同一 inode。macOS 上创建模式已经
@@ -77,6 +93,10 @@ package enum StorageDirectorySecurity {
     }
 
     private static func validateRegularFileIdentity(_ url: URL) throws {
+        _ = try validatedRegularFileIdentityStatus(url)
+    }
+
+    private static func validatedRegularFileIdentityStatus(_ url: URL) throws -> stat {
         let status = try fileStatusWithoutFollowingLinks(at: url)
         let fileType = status.st_mode & S_IFMT
         guard fileType == S_IFREG,
@@ -85,6 +105,7 @@ package enum StorageDirectorySecurity {
         else {
             throw AkashicError.storageUnavailable
         }
+        return status
     }
 
     package static func validateRegularFile(_ url: URL) throws {
@@ -100,16 +121,37 @@ package enum StorageDirectorySecurity {
     }
 
     package static func validateOpenedPrivateRegularFile(_ descriptor: Int32) throws {
+        _ = try validatedOpenedPrivateRegularFileStatus(descriptor)
+    }
+
+    /// 返回已经完成 type/link/owner 校验的同一次 `fstat` 结果。
+    ///
+    /// 某些 bootstrap 路径需要先读取 inode-scoped authority，再在 store 返回前统一修复
+    /// permission drift；此入口不放宽 inode identity，只把 mode gate 留给后续明确阶段。
+    package static func validatedOpenedOwnedRegularFileStatus(
+        _ descriptor: Int32
+    ) throws -> stat {
         var status = stat()
         guard Darwin.fstat(descriptor, &status) == 0 else { throw posixError() }
         let fileType = status.st_mode & S_IFMT
         guard fileType == S_IFREG,
             status.st_nlink == 1,
-            status.st_uid == Darwin.geteuid(),
-            status.st_mode & 0o077 == 0
+            status.st_uid == Darwin.geteuid()
         else {
             throw AkashicError.storageUnavailable
         }
+        return status
+    }
+
+    /// 返回已经完成 type/link/owner/mode 校验的同一次 `fstat` 结果，供后续长度边界复用。
+    package static func validatedOpenedPrivateRegularFileStatus(
+        _ descriptor: Int32
+    ) throws -> stat {
+        let status = try validatedOpenedOwnedRegularFileStatus(descriptor)
+        guard status.st_mode & 0o077 == 0 else {
+            throw AkashicError.storageUnavailable
+        }
+        return status
     }
 
     package static func validateOpenedDirectory(_ descriptor: Int32) throws {

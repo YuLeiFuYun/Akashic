@@ -146,11 +146,16 @@ public struct CachePartitionID: Hashable, Sendable, Codable {
             domainBytes.count <= 128,
             domain.unicodeScalars.allSatisfy({ $0.value >= 0x21 && $0.value <= 0x7e })
         else { throw AkashicError.invalidIdentity }
-        var input = Data("akashic-partition-v1\u{0}".utf8)
-        input.append(domainBytes)
-        input.append(0)
-        input.append(material)
-        return try CachePartitionID(bytes: Data(SHA256.hash(data: input)))
+        // Hash the canonical byte sequence incrementally so caller-provided opaque material does
+        // not need to be copied into one additional O(material.count) temporary `Data` buffer.
+        // This preserves the exact v1 identity bytes:
+        // `"akashic-partition-v1\0" || domain || "\0" || material`.
+        var hasher = SHA256()
+        hasher.update(data: Data("akashic-partition-v1\u{0}".utf8))
+        hasher.update(data: domainBytes)
+        hasher.update(data: Data([0]))
+        hasher.update(data: material)
+        return try CachePartitionID(bytes: Data(hasher.finalize()))
     }
 
     private enum CodingKeys: String, CodingKey {

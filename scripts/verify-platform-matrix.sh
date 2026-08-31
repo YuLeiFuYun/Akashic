@@ -114,6 +114,8 @@ fi
 
 rm -rf "$DERIVED_ROOT"
 mkdir -p "$DERIVED_ROOT"
+SOURCE_IDENTITY="$DERIVED_ROOT/source-identity-before.json"
+python3 Tools/Identity/capture_source_identity.py --output "$SOURCE_IDENTITY"
 for product in AkashicDisk AkashicMemory
 do
     for label in macos ios-simulator ios-device
@@ -121,4 +123,7 @@ do
         run_case "$product" "$label"
     done
 done
+python3 Tools/Identity/capture_source_identity.py \
+    --output "$DERIVED_ROOT/source-identity-after.json" \
+    --compare "$SOURCE_IDENTITY"
 python3 Tools/Compatibility/validate_platform_matrix.py

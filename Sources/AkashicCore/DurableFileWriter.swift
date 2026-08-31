@@ -11,6 +11,10 @@ package enum DurableFileWriteSwitchPoint: String, CaseIterable, Sendable {
 package typealias DurableFileWriteFaultInjector =
     @Sendable (DurableFileWriteSwitchPoint) throws -> Void
 
+/// 允许包内测试精确控制 `open(2)` 的返回行为。
+package typealias DurableFileOpenOperation =
+    (String, Int32, mode_t) -> Int32
+
 /// 允许包内测试精确控制一次底层 `write(2)` 调用的返回行为。
 package typealias DurableFileWriteOperation =
     (Int32, UnsafeRawPointer, Int) -> Int
@@ -29,17 +33,20 @@ package typealias DurableFileRenameOperation = (String, String) -> Int32
 /// 生产入口始终使用真实 Darwin 系统调用；测试入口通过该值验证部分成功、
 /// `EINTR`、空间耗尽和同步失败不会绕过原子可见性边界。
 package struct DurableFileSystemOperations {
+    package let open: DurableFileOpenOperation
     package let write: DurableFileWriteOperation
     package let synchronize: DurableFileSynchronizeOperation
     package let close: DurableFileCloseOperation
     package let rename: DurableFileRenameOperation
 
     package init(
+        open: @escaping DurableFileOpenOperation,
         write: @escaping DurableFileWriteOperation,
         synchronize: @escaping DurableFileSynchronizeOperation,
         close: @escaping DurableFileCloseOperation,
         rename: @escaping DurableFileRenameOperation
     ) {
+        self.open = open
         self.write = write
         self.synchronize = synchronize
         self.close = close
@@ -59,13 +66,51 @@ package enum DurableFileWriter {
     package static func writeReplacing(
         _ data: Data,
         to destination: URL,
-        faultInjector: DurableFileWriteFaultInjector
+        faultInjector: DurableFileWriteFaultInjector,
+        renameObserver: () -> Void = {}
     ) throws {
         try writeReplacing(
             data,
             to: destination,
             faultInjector: faultInjector,
+            renameObserver: renameObserver,
+            synchronizeParentDirectory: true,
             operations: systemOperations()
+        )
+    }
+
+    /// 写完、同步并原子 rename，但把父目录 fsync 明确留给同目录的紧随其后的
+    /// 高层事务。仅 package 内部事务可使用；调用方必须在返回成功前完成父目录同步。
+    package static func writeReplacingDeferringDirectorySync(
+        _ data: Data,
+        to destination: URL,
+        faultInjector: DurableFileWriteFaultInjector,
+        renameObserver: () -> Void = {}
+    ) throws {
+        try writeReplacing(
+            data,
+            to: destination,
+            faultInjector: faultInjector,
+            renameObserver: renameObserver,
+            synchronizeParentDirectory: false,
+            operations: systemOperations()
+        )
+    }
+
+    package static func writeReplacingDeferringDirectorySync(
+        _ data: Data,
+        to destination: URL,
+        faultInjector: DurableFileWriteFaultInjector,
+        renameObserver: () -> Void = {},
+        operations: DurableFileSystemOperations
+    ) throws {
+        try writeReplacing(
+            data,
+            to: destination,
+            faultInjector: faultInjector,
+            renameObserver: renameObserver,
+            synchronizeParentDirectory: false,
+            operations: operations
         )
     }
 
@@ -77,6 +122,25 @@ package enum DurableFileWriter {
         _ data: Data,
         to destination: URL,
         faultInjector: DurableFileWriteFaultInjector,
+        renameObserver: () -> Void = {},
+        operations: DurableFileSystemOperations
+    ) throws {
+        try writeReplacing(
+            data,
+            to: destination,
+            faultInjector: faultInjector,
+            renameObserver: renameObserver,
+            synchronizeParentDirectory: true,
+            operations: operations
+        )
+    }
+
+    private static func writeReplacing(
+        _ data: Data,
+        to destination: URL,
+        faultInjector: DurableFileWriteFaultInjector,
+        renameObserver: () -> Void,
+        synchronizeParentDirectory: Bool,
         operations: DurableFileSystemOperations
     ) throws {
         let directory = destination.deletingLastPathComponent()
@@ -84,7 +148,7 @@ package enum DurableFileWriter {
             ".durable-tmp-\(UUID().uuidString.lowercased())",
             isDirectory: false
         )
-        let descriptor = Darwin.open(
+        let descriptor = operations.open(
             temporary.path,
             O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC | O_NOFOLLOW,
             S_IRUSR | S_IWUSR
@@ -100,8 +164,6 @@ package enum DurableFileWriter {
 
         var descriptorIsOpen = true
         do {
-            // 新文件已由 O_EXCL/O_NOFOLLOW 和 0600 创建；只在首次 fsync 前补齐
-            // 平台文件保护。父目录的备份排除覆盖其内容，rename 保留同一 inode。
             try StorageDirectorySecurity.secureNewPrivateFile(
                 temporary,
                 descriptor: descriptor
@@ -111,7 +173,6 @@ package enum DurableFileWriter {
             try synchronize(descriptor, operation: operations.synchronize)
             try faultInjector(.afterFileSynced)
 
-            // close 失败后描述符是否仍可用并不适合由调用方猜测，因此绝不重试同一 fd。
             let closeResult = operations.close(descriptor)
             descriptorIsOpen = false
             guard closeResult == 0 else { throw posixError() }
@@ -119,9 +180,12 @@ package enum DurableFileWriter {
             guard operations.rename(temporary.path, destination.path) == 0 else {
                 throw posixError()
             }
+            renameObserver()
             try faultInjector(.afterRename)
-            try synchronizeDirectory(directory, operations: operations)
-            try faultInjector(.afterDirectorySynced)
+            if synchronizeParentDirectory {
+                try synchronizeDirectory(directory, operations: operations)
+                try faultInjector(.afterDirectorySynced)
+            }
         } catch {
             if descriptorIsOpen { _ = operations.close(descriptor) }
             try? FileManager.default.removeItem(at: temporary)
@@ -169,7 +233,11 @@ package enum DurableFileWriter {
         _ directory: URL,
         operations: DurableFileSystemOperations
     ) throws {
-        let descriptor = Darwin.open(directory.path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
+        let descriptor = operations.open(
+            directory.path,
+            O_RDONLY | O_CLOEXEC | O_NOFOLLOW,
+            0
+        )
         guard descriptor >= 0 else { throw posixError() }
         defer { _ = operations.close(descriptor) }
         try StorageDirectorySecurity.validateOpenedDirectory(descriptor)
@@ -178,6 +246,9 @@ package enum DurableFileWriter {
 
     private static func systemOperations() -> DurableFileSystemOperations {
         DurableFileSystemOperations(
+            open: { path, flags, mode in
+                path.withCString { Darwin.open($0, flags, mode) }
+            },
             write: { descriptor, bytes, count in
                 Darwin.write(descriptor, bytes, count)
             },

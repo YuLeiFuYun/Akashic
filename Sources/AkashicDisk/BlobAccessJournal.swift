@@ -8,8 +8,16 @@ enum BlobAccessJournal {
 
     /// 返回本次运行时访问时间。持久更新时间失败只降低跨进程淘汰精度，
     /// 不会让已经验证的缓存读取失败。
-    static func recordAccess(at blobURL: URL) -> Date {
+    static func recordAccess(
+        at blobURL: URL,
+        persistedModificationDate: Date? = nil
+    ) -> Date {
         let now = Date()
+        if let persistedModificationDate,
+            now.timeIntervalSince(persistedModificationDate) < persistentUpdateInterval
+        {
+            return now
+        }
         let descriptor = Darwin.open(blobURL.path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
         guard descriptor >= 0 else { return now }
         defer { _ = Darwin.close(descriptor) }

@@ -1,6 +1,63 @@
 import Foundation
 
 /// 描述一次内存缓存裁剪或清空实际释放的条目数与归一化成本。
+package struct MemoryCacheEvictionVictim<Key: Sendable>: Sendable {
+    package let key: Key
+    package let cost: Int
+
+    package init(key: Key, cost: Int) {
+        self.key = key
+        self.cost = cost
+    }
+}
+
+/// 研究探针使用：描述一次不变更真实缓存状态的 SIEVE 淘汰模拟。
+/// `clearedVisitedKeys` 按模拟 hand 顺序列出本次为寻找 victim 而消费 second-chance 的 key；
+/// `victims` 则是随后实际需要删除的对象集合。package-only，不构成公共 cache contract。
+package struct MemoryCacheEvictionTrace<Key: Sendable>: Sendable {
+    package let clearedVisitedKeys: [Key]
+    package let victims: [MemoryCacheEvictionVictim<Key>]
+    /// 模拟过程中会触发 production `visitedCount == residentCount` epoch 全清的次数。
+    package let fullVisitedEpochResetCount: Int
+}
+
+/// 研究探针使用：当前 resident SIEVE visited/unvisited 资源分解。
+package struct MemoryCacheVisitState: Sendable {
+    package let residentCount: Int
+    package let visitedCount: Int
+    package let residentCost: Int
+    package let visitedCost: Int
+    package let unvisitedCost: Int
+}
+
+/// 研究探针使用：把当前 FIFO resident ring 按有效 SIEVE hand 切成 hand 之前的前缀
+/// 与从 hand 开始的后缀。该状态只在显式 probe 调用时遍历链表，不在普通 hit/insert
+/// 热路径维护额外计数；package-only，不构成公共 cache policy contract。
+package struct MemoryCacheHandTopologyState: Codable, Hashable, Sendable {
+    package let residentCount: Int
+    package let residentCost: Int
+    package let prefixBeforeHandCount: Int
+    package let prefixBeforeHandCost: Int
+    package let suffixFromHandCount: Int
+    package let suffixFromHandCost: Int
+
+    package init(
+        residentCount: Int,
+        residentCost: Int,
+        prefixBeforeHandCount: Int,
+        prefixBeforeHandCost: Int,
+        suffixFromHandCount: Int,
+        suffixFromHandCost: Int
+    ) {
+        self.residentCount = residentCount
+        self.residentCost = residentCost
+        self.prefixBeforeHandCount = prefixBeforeHandCount
+        self.prefixBeforeHandCost = prefixBeforeHandCost
+        self.suffixFromHandCount = suffixFromHandCount
+        self.suffixFromHandCost = suffixFromHandCost
+    }
+}
+
 public struct MemoryCacheRemovalSummary: Hashable, Sendable {
     /// 本次操作移除的缓存项数量。
     public let itemCount: Int
@@ -21,10 +78,11 @@ public struct MemoryCacheRemovalSummary: Hashable, Sendable {
 /// 内部用短临界区锁和直接节点链接维护线性化语义，避免 actor 调度、Entry 值拷贝
 /// 以及通过键反复回查相邻节点的成本。
 public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unchecked Sendable {
-    private final class Node {
+    final class Node {
         let key: Key
         var value: Value
         var cost: Int
+        var incarnation: UInt64
         var visitedEpoch: UInt64
         unowned(unsafe) var previous: Node?
         unowned(unsafe) var next: Node?
@@ -33,21 +91,30 @@ public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unch
             self.key = key
             self.value = value
             self.cost = cost
+            self.incarnation = 0
             self.visitedEpoch = 0
             self.previous = previous
         }
     }
 
-    private let lock = NSLock()
-    private var costLimit: Int
-    private var totalCost = 0
-    private var residentCount = 0
-    private var visitedCount = 0
-    private var visitEpoch: UInt64 = 1
-    private var entries: [Key: Node] = [:]
-    private unowned(unsafe) var leastRecent: Node?
-    private unowned(unsafe) var mostRecent: Node?
-    private unowned(unsafe) var sieveHand: Node?
+    let lock = NSLock()
+    var costLimit: Int
+    var totalCost = 0
+    var residentCount = 0
+    var visitedCount = 0
+    var visitEpoch: UInt64 = 1
+    var evictionStateVersion: UInt64 = 0
+    var evictionStateVersionSaturated = false
+    var deferredRetirementInFlight = 0
+    var deferredRetirementInFlightItemCount = 0
+    var deferredRetirementInFlightCost = 0
+    var queuedRetirementEntries: [Key: Node]? = nil
+    var queuedRetirementItemCount = 0
+    var queuedRetirementCost = 0
+    var entries: [Key: Node] = [:]
+    unowned(unsafe) var leastRecent: Node?
+    unowned(unsafe) var mostRecent: Node?
+    unowned(unsafe) var sieveHand: Node?
 
     /// 创建总成本上限已归一化为正值的 SIEVE 缓存。
     public init(costLimit: Int) {
@@ -61,6 +128,7 @@ public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unch
             if node.visitedEpoch != visitEpoch {
                 node.visitedEpoch = visitEpoch
                 visitedCount += 1
+                markEvictionStateChangedLocked()
             }
             return node.value
         }
@@ -69,36 +137,9 @@ public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unch
     /// 先淘汰满足成本上限所需的最久未使用项，再插入值。
     public func insert(_ value: Value, for key: Key, cost: Int) {
         atomic {
-            let cost = max(1, cost)
-            let reusable = entries[key]
-            if let reusable { detachLocked(reusable) }
-            guard cost <= costLimit else {
-                if reusable != nil { entries.removeValue(forKey: key) }
-                return
+            if insertLocked(value, for: key, cost: cost) {
+                markEvictionStateChangedLocked()
             }
-
-            // 先腾出确定空间，再执行加法；即使 limit 为 Int.max，也不会发生总成本溢出。
-            let maximumExistingCost = costLimit - cost
-            while totalCost > maximumExistingCost, let victim = nextSieveVictimLocked() {
-                removeLocked(victim)
-            }
-
-            let node: Node
-            if let reusable {
-                reusable.value = value
-                reusable.cost = cost
-                reusable.visitedEpoch = 0
-                reusable.previous = mostRecent
-                node = reusable
-            } else {
-                node = Node(key: key, value: value, cost: cost, previous: mostRecent)
-            }
-            mostRecent?.next = node
-            if leastRecent == nil { leastRecent = node }
-            mostRecent = node
-            residentCount += 1
-            if reusable == nil { entries[key] = node }
-            totalCost += cost
         }
     }
 
@@ -108,16 +149,21 @@ public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unch
     public func updateCostLimit(_ newLimit: Int) -> MemoryCacheRemovalSummary {
         atomic {
             let normalized = max(1, newLimit)
+            let limitChanged = normalized != costLimit
             costLimit = normalized
             let initialCount = entries.count
             let initialCost = totalCost
             while totalCost > normalized, let victim = nextSieveVictimLocked() {
                 removeLocked(victim)
             }
-            return MemoryCacheRemovalSummary(
+            let summary = MemoryCacheRemovalSummary(
                 itemCount: initialCount - entries.count,
                 costBytes: initialCost - totalCost
             )
+            if limitChanged || summary.itemCount > 0 {
+                markEvictionStateChangedLocked()
+            }
+            return summary
         }
     }
 
@@ -126,14 +172,31 @@ public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unch
         atomic {
             guard let node = entries[key] else { return }
             removeLocked(node)
+            markEvictionStateChangedLocked()
         }
     }
 
     /// 删除由非隔离且可发送谓词选中的所有键。
     public func removeAll(where predicate: @Sendable (Key) -> Bool) {
+        // Never execute caller code while holding the cache mutex. Besides allowing the predicate
+        // to re-enter this cache, the saved node identity + incarnation makes the second phase
+        // conditional: a replacement that happens while the predicate is running must survive an
+        // older snapshot's decision.
+        let candidates: [(key: Key, node: Node, incarnation: UInt64)] = atomic {
+            entries.values.map { ($0.key, $0, $0.incarnation) }
+        }
+        let victims = candidates.filter { predicate($0.key) }
         atomic {
-            let victims = entries.values.filter { predicate($0.key) }
-            for node in victims { removeLocked(node) }
+            var removedAny = false
+            for candidate in victims {
+                guard let current = entries[candidate.key],
+                    current === candidate.node,
+                    current.incarnation == candidate.incarnation
+                else { continue }
+                removeLocked(current)
+                removedAny = true
+            }
+            if removedAny { markEvictionStateChangedLocked() }
         }
     }
 
@@ -157,21 +220,63 @@ public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unch
             residentCount = 0
             visitedCount = 0
             visitEpoch = 1
+            if summary.itemCount > 0 { markEvictionStateChangedLocked() }
             return summary
         }
     }
 
-    /// 当前归一化插入总成本。
+    /// 研究探针使用：在不改变 SIEVE hand、访问代次或 resident 状态的前提下，
+    /// 精确预测一个新对象按当前状态插入时需要淘汰的 victim 集合。
+    /// 该入口是 package-only，不构成公共 cache policy contract。
     public var currentCost: Int { atomic { totalCost } }
 
     /// 当前活动缓存项数量。
     public var count: Int { atomic { entries.count } }
 
+    @discardableResult
+    func insertLocked(_ value: Value, for key: Key, cost: Int) -> Bool {
+        let cost = max(1, cost)
+        let reusable = entries[key]
+        if let reusable { detachLocked(reusable) }
+        guard cost <= costLimit else {
+            if reusable != nil {
+                entries.removeValue(forKey: key)
+                return true
+            }
+            return false
+        }
+
+        // 先腾出确定空间，再执行加法；即使 limit 为 Int.max，也不会发生总成本溢出。
+        let maximumExistingCost = costLimit - cost
+        while totalCost > maximumExistingCost, let victim = nextSieveVictimLocked() {
+            removeLocked(victim)
+        }
+
+        let node: Node
+        if let reusable, reusable.incarnation != UInt64.max {
+            reusable.value = value
+            reusable.cost = cost
+            reusable.incarnation += 1
+            reusable.visitedEpoch = 0
+            reusable.previous = mostRecent
+            node = reusable
+        } else {
+            node = Node(key: key, value: value, cost: cost, previous: mostRecent)
+        }
+        mostRecent?.next = node
+        if leastRecent == nil { leastRecent = node }
+        mostRecent = node
+        residentCount += 1
+        if reusable == nil || node !== reusable { entries[key] = node }
+        totalCost += cost
+        return true
+    }
+
     /// SIEVE 将插入链表视作 FIFO 队列。循环指针遇到已访问对象时只清除访问代次，
     /// 遇到未访问对象时才淘汰。若全部驻留对象都已访问，经典 SIEVE 必然完整绕环、
     /// 清除所有访问位并回到同一 hand；此处以 O(1) 推进全局代次得到完全相同的 victim，
     /// 避免高并发读后下一次插入在锁内集中扫描整个缓存。
-    private func nextSieveVictimLocked() -> Node? {
+    func nextSieveVictimLocked() -> Node? {
         guard residentCount > 0, leastRecent != nil else { return nil }
         if sieveHand == nil { sieveHand = leastRecent }
         if visitedCount == residentCount { advanceVisitEpochLocked() }
@@ -192,7 +297,7 @@ public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unch
 
     /// 全访问集合的逻辑清位。UInt64 回绕只可能在不可实现的运行长度后出现，
     /// 仍通过一次显式归一化保持状态机总定义和可模型检查性。
-    private func advanceVisitEpochLocked() {
+    func advanceVisitEpochLocked() {
         if visitEpoch == .max {
             var node = leastRecent
             while let current = node {
@@ -206,14 +311,58 @@ public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unch
         visitedCount = 0
     }
 
+    func retirementGenerationCountLocked() -> Int {
+        let queuedCount = queuedRetirementEntries == nil ? 0 : 1
+        let total = deferredRetirementInFlight.addingReportingOverflow(queuedCount)
+        return total.overflow ? .max : total.partialValue
+    }
+
+    func beginRetirementInFlightLocked(_ summary: MemoryCacheRemovalSummary) {
+        precondition(summary.itemCount >= 0 && summary.costBytes >= 0)
+        let generations = deferredRetirementInFlight.addingReportingOverflow(1)
+        let items = deferredRetirementInFlightItemCount.addingReportingOverflow(summary.itemCount)
+        let cost = deferredRetirementInFlightCost.addingReportingOverflow(summary.costBytes)
+        precondition(!generations.overflow && !items.overflow && !cost.overflow)
+        deferredRetirementInFlight = generations.partialValue
+        deferredRetirementInFlightItemCount = items.partialValue
+        deferredRetirementInFlightCost = cost.partialValue
+    }
+
+    func finishRetirementInFlightLocked(_ summary: MemoryCacheRemovalSummary) {
+        precondition(
+            deferredRetirementInFlight > 0
+                && deferredRetirementInFlightItemCount >= summary.itemCount
+                && deferredRetirementInFlightCost >= summary.costBytes
+        )
+        deferredRetirementInFlight -= 1
+        deferredRetirementInFlightItemCount -= summary.itemCount
+        deferredRetirementInFlightCost -= summary.costBytes
+    }
+
+    /// Monotonic decision-state token for optimistic package-only admission. Saturation deliberately
+    /// disables the equality fast path instead of wrapping: a wrapped token could ABA an arbitrarily
+    /// old snapshot. Once saturated, exact streaming validation remains available indefinitely.
+    func markEvictionStateChangedLocked() {
+        guard !evictionStateVersionSaturated else { return }
+        if evictionStateVersion == .max {
+            evictionStateVersionSaturated = true
+        } else {
+            evictionStateVersion += 1
+        }
+    }
+
+    func currentEvictionStateVersionLocked() -> UInt64? {
+        evictionStateVersionSaturated ? nil : evictionStateVersion
+    }
+
     @inline(__always)
-    private func atomic<T>(_ operation: () throws -> T) rethrows -> T {
+    func atomic<T>(_ operation: () throws -> T) rethrows -> T {
         lock.lock()
         defer { lock.unlock() }
         return try operation()
     }
 
-    private func detachLocked(_ node: Node) {
+    func detachLocked(_ node: Node) {
         if node.visitedEpoch == visitEpoch {
             visitedCount -= 1
         }
@@ -236,7 +385,7 @@ public final class MemoryCache<Key: Hashable & Sendable, Value: Sendable>: @unch
         }
     }
 
-    private func removeLocked(_ node: Node) {
+    func removeLocked(_ node: Node) {
         detachLocked(node)
         entries.removeValue(forKey: node.key)
     }

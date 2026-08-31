@@ -1,4 +1,6 @@
 import AkashicCore
+import CryptoKit
+import Darwin
 import Foundation
 import Testing
 
@@ -8,8 +10,8 @@ import Testing
 struct FileBlobStoreManifestV2Tests {
   @Test("AKASHIC-CT-030 incremental manifest records replay after reopen")
   func incrementalManifestReplay() async throws {
-    try await withTemporaryDirectory { root in
-      let partition = try partition("incremental-replay")
+    try await withManifestTestTemporaryDirectory { root in
+      let manifestTestPartition = try manifestTestPartition("incremental-replay")
       let firstData = Data("incremental-first".utf8)
       let secondData = Data("incremental-second".utf8)
       let firstDigest = BlobDigest.sha256(of: firstData)
@@ -18,54 +20,60 @@ struct FileBlobStoreManifestV2Tests {
       _ = try await store!.commit(
         data: firstData,
         digest: firstDigest,
-        partition: partition
+        partition: manifestTestPartition
       )
       _ = try await store!.commit(
         data: secondData,
         digest: secondDigest,
-        partition: partition
+        partition: manifestTestPartition
       )
-      #expect(manifestRecordFiles(in: root).count == 2)
+      #expect(manifestRecordFiles(in: root).isEmpty)
+      #expect(try manifestXattrRecordCount(in: root, generation: 1) == 2)
 
       store = nil
       let reopened = try await reopenFileBlobStore(root: root)
       #expect(
-        try await reopened.read(digest: firstDigest, partition: partition) == firstData
+        try await reopened.read(digest: firstDigest, partition: manifestTestPartition) == firstData
       )
       #expect(
-        try await reopened.read(digest: secondDigest, partition: partition) == secondData
+        try await reopened.read(digest: secondDigest, partition: manifestTestPartition) == secondData
       )
     }
   }
 
   @Test("AKASHIC-CT-031 incremental tombstone remains a miss after reopen")
   func incrementalTombstoneReplay() async throws {
-    try await withTemporaryDirectory { root in
-      let partition = try partition("incremental-tombstone")
+    try await withManifestTestTemporaryDirectory { root in
+      let manifestTestPartition = try manifestTestPartition("incremental-tombstone")
       let data = Data("incremental-tombstone".utf8)
       let digest = BlobDigest.sha256(of: data)
       var store: FileBlobStore? = try await FileBlobStore.open(root: root)
-      _ = try await store!.commit(data: data, digest: digest, partition: partition)
-      try await store!.remove(digest: digest, partition: partition)
+      _ = try await store!.commit(data: data, digest: digest, partition: manifestTestPartition)
+      try await store!.remove(digest: digest, partition: manifestTestPartition)
       #expect(manifestRecordFiles(in: root).count == 1)
 
       store = nil
       let reopened = try await reopenFileBlobStore(root: root)
-      await expectAkashicError(.notFound) {
-        _ = try await reopened.read(digest: digest, partition: partition)
+      await expectManifestTestAkashicError(.notFound) {
+        _ = try await reopened.read(digest: digest, partition: manifestTestPartition)
       }
-      #expect(blobFiles(in: root).isEmpty)
+      #expect(manifestTestBlobFiles(in: root).isEmpty)
     }
   }
 
   @Test("AKASHIC-CT-032 corrupt incremental record fails closed")
   func corruptIncrementalRecordFailsClosed() async throws {
-    try await withTemporaryDirectory { root in
-      let partition = try partition("corrupt-incremental-record")
+    try await withManifestTestTemporaryDirectory { root in
+      let manifestTestPartition = try manifestTestPartition("corrupt-incremental-record")
       let data = Data("corrupt-incremental-record".utf8)
       let digest = BlobDigest.sha256(of: data)
       var store: FileBlobStore? = try await FileBlobStore.open(root: root)
-      _ = try await store!.commit(data: data, digest: digest, partition: partition)
+      _ = try await publishThroughSidecar(
+        store: store!,
+        data: data,
+        digest: digest,
+        partition: manifestTestPartition
+      )
       let record = try #require(manifestRecordFiles(in: root).first)
       store = nil
       try await waitForWriterLeaseRelease(root: root)
@@ -75,19 +83,30 @@ struct FileBlobStoreManifestV2Tests {
     }
   }
 
-  @Test("AKASHIC-CT-033 multi-key maintenance checkpoints and removes records")
+  @Test("AKASHIC-CT-033 checkpoint retires record authority and amortizes physical cleanup")
   func multiKeyMaintenanceCheckpoint() async throws {
-    try await withTemporaryDirectory { root in
-      let partition = try partition("multi-key-checkpoint")
+    try await withManifestTestTemporaryDirectory { root in
+      let manifestTestPartition = try manifestTestPartition("multi-key-checkpoint")
       let values = [Data("checkpoint-a".utf8), Data("checkpoint-b".utf8)]
       let digests = values.map(BlobDigest.sha256(of:))
       var store: FileBlobStore? = try await FileBlobStore.open(root: root)
       for (data, digest) in zip(values, digests) {
-        _ = try await store!.commit(data: data, digest: digest, partition: partition)
+        _ = try await publishThroughSidecar(
+          store: store!,
+          data: data,
+          digest: digest,
+          partition: manifestTestPartition
+        )
       }
       #expect(manifestRecordFiles(in: root).count == 2)
-      try await store!.removeAll(partition: partition)
-      #expect(manifestRecordFiles(in: root).isEmpty)
+      try await store!.removeAll(partition: manifestTestPartition)
+      let retired = manifestRecordFiles(in: root)
+      #expect(retired.count == 2)
+      #expect(
+        retired.allSatisfy {
+          FileBlobStore.ManifestRecord.fileIdentity(from: $0.lastPathComponent)?.generation == 1
+        }
+      )
       let snapshot = try JSONDecoder().decode(
         FileBlobStore.Manifest.self,
         from: Data(contentsOf: root.appendingPathComponent("manifest.json"))
@@ -98,38 +117,53 @@ struct FileBlobStoreManifestV2Tests {
       store = nil
       let reopened = try await reopenFileBlobStore(root: root)
       for digest in digests {
-        await expectAkashicError(.notFound) {
-          _ = try await reopened.read(digest: digest, partition: partition)
+        await expectManifestTestAkashicError(.notFound) {
+          _ = try await reopened.read(digest: digest, partition: manifestTestPartition)
         }
       }
+
+      for index in 0..<2 {
+        let cleanupData = Data("cleanup-debt-\(index)".utf8)
+        _ = try await publishThroughSidecar(
+          store: reopened,
+          data: cleanupData,
+          digest: BlobDigest.sha256(of: cleanupData),
+          partition: manifestTestPartition
+        )
+      }
+      let afterRepayment = manifestRecordFiles(in: root).compactMap {
+        FileBlobStore.ManifestRecord.fileIdentity(from: $0.lastPathComponent)
+      }
+      #expect(afterRepayment.filter { $0.generation == 1 }.isEmpty)
+      #expect(afterRepayment.filter { $0.generation == 2 }.count == 2)
     }
   }
 
   @Test("AKASHIC-CT-034 stale generation record cannot resurrect an entry")
   func staleGenerationRecordCannotResurrect() async throws {
-    try await withTemporaryDirectory { root in
-      let partition = try partition("stale-record")
+    try await withManifestTestTemporaryDirectory { root in
+      let manifestTestPartition = try manifestTestPartition("stale-record")
       let values = [Data("stale-seed-a".utf8), Data("stale-seed-b".utf8)]
       var store: FileBlobStore? = try await FileBlobStore.open(root: root)
       for data in values {
         _ = try await store!.commit(
           data: data,
           digest: BlobDigest.sha256(of: data),
-          partition: partition
+          partition: manifestTestPartition
         )
       }
-      try await store!.removeAll(partition: partition)
+      try await store!.removeAll(partition: manifestTestPartition)
       store = nil
       try await waitForWriterLeaseRelease(root: root)
 
       let staleData = Data("stale-generation-payload".utf8)
       let staleDigest = BlobDigest.sha256(of: staleData)
       let stalePhysicalID = PhysicalBlobID()
-      let staleBlob = blobURL(root: root, id: stalePhysicalID)
+      let staleBlob = manifestTestBlobURL(root: root, id: stalePhysicalID)
       try writePrivateFile(staleData, to: staleBlob)
       let key = FileBlobStoreIdentity.manifestKey(
         digest: staleDigest,
-        partition: partition
+        partition: manifestTestPartition
       )
       let staleRecord = FileBlobStore.ManifestRecord(
         generation: 1,
@@ -137,167 +171,58 @@ struct FileBlobStoreManifestV2Tests {
         key: key,
         entry: FileBlobStore.Entry(
           physicalID: stalePhysicalID,
-          partition: partition,
+          partition: manifestTestPartition,
           digest: staleDigest,
           byteCount: staleData.count,
           lastAccess: Date()
         )
       )
-      let recordURL = manifestRecordURL(root: root, key: key)
+      let recordURL = legacyManifestRecordURL(root: root, key: key)
       try writePrivateFile(try JSONEncoder().encode(staleRecord), to: recordURL)
 
       let reopened = try await FileBlobStore.open(root: root)
-      await expectAkashicError(.notFound) {
-        _ = try await reopened.read(digest: staleDigest, partition: partition)
+      await expectManifestTestAkashicError(.notFound) {
+        _ = try await reopened.read(digest: staleDigest, partition: manifestTestPartition)
       }
       #expect(!FileManager.default.fileExists(atPath: staleBlob.path))
-      #expect(!FileManager.default.fileExists(atPath: recordURL.path))
+      // record 已失去 logical authority，但作为 bounded physical cleanup debt 可以继续存在。
+      #expect(FileManager.default.fileExists(atPath: recordURL.path))
     }
   }
 
-}
+  @Test("AKASHIC-CT-057 stale scoped record content is not part of current authority")
+  func staleScopedRecordContentIsIgnored() async throws {
+    try await withManifestTestTemporaryDirectory { root in
+      let manifestTestPartition = try manifestTestPartition("stale-scoped-content")
+      let values = [Data("stale-scoped-a".utf8), Data("stale-scoped-b".utf8)]
+      let digests = values.map(BlobDigest.sha256(of:))
+      var store: FileBlobStore? = try await FileBlobStore.open(root: root)
+      for (data, digest) in zip(values, digests) {
+        _ = try await publishThroughSidecar(
+          store: store!,
+          data: data,
+          digest: digest,
+          partition: manifestTestPartition
+        )
+      }
+      try await store!.removeAll(partition: manifestTestPartition)
+      let staleRecord = try #require(
+        manifestRecordFiles(in: root).first {
+          FileBlobStore.ManifestRecord.fileIdentity(from: $0.lastPathComponent)?.generation == 1
+        }
+      )
+      store = nil
+      try await waitForWriterLeaseRelease(root: root)
+      try writePrivateFile(Data("corrupt-stale-content".utf8), to: staleRecord)
 
-private func createPrivateDirectory(_ url: URL) throws {
-  try FileManager.default.createDirectory(
-    at: url,
-    withIntermediateDirectories: true,
-    attributes: [.posixPermissions: NSNumber(value: Int16(0o700))]
-  )
-  try FileManager.default.setAttributes(
-    [.posixPermissions: NSNumber(value: Int16(0o700))],
-    ofItemAtPath: url.path
-  )
-}
-
-private func writePrivateFile(_ data: Data, to url: URL) throws {
-  try data.write(to: url)
-  try FileManager.default.setAttributes(
-    [.posixPermissions: NSNumber(value: Int16(0o600))],
-    ofItemAtPath: url.path
-  )
-}
-
-private func manifestRecordURL(root: URL, key: String) -> URL {
-  root.appendingPathComponent("blobs", isDirectory: true)
-    .appendingPathComponent(".manifest-entry-\(key).json", isDirectory: false)
-}
-
-private func manifestRecordFiles(in root: URL) -> [URL] {
-  let blobs = root.appendingPathComponent("blobs", isDirectory: true)
-  return
-    ((try? FileManager.default.contentsOfDirectory(
-      at: blobs,
-      includingPropertiesForKeys: nil,
-      options: []
-    )) ?? []).filter {
-      $0.lastPathComponent.hasPrefix(".manifest-entry-")
-        && $0.pathExtension == "json"
-    }
-}
-
-private func waitForWriterLeaseRelease(root: URL) async throws {
-  for _ in 0..<200 {
-    if runExternalLockProbe(root: root) == 0 { return }
-    await Task.yield()
-  }
-  throw AkashicError.transactionConflict
-}
-
-private func reopenFileBlobStore(root: URL) async throws -> FileBlobStore {
-  for _ in 0..<200 {
-    do {
-      return try await FileBlobStore.open(root: root)
-    } catch AkashicError.transactionConflict {
-      await Task.yield()
+      let reopened = try await FileBlobStore.open(root: root)
+      for digest in digests {
+        await expectManifestTestAkashicError(.notFound) {
+          _ = try await reopened.read(digest: digest, partition: manifestTestPartition)
+        }
+      }
+      #expect(FileManager.default.fileExists(atPath: staleRecord.path))
     }
   }
-  throw AkashicError.transactionConflict
-}
 
-private func expectFileBlobStoreOpenError(
-  _ expected: AkashicError,
-  root: URL
-) async {
-  for _ in 0..<200 {
-    do {
-      _ = try await FileBlobStore.open(root: root)
-      Issue.record("Expected AkashicError.\(expected)")
-      return
-    } catch AkashicError.transactionConflict {
-      await Task.yield()
-    } catch let error as AkashicError {
-      #expect(error == expected)
-      return
-    } catch {
-      Issue.record("Expected AkashicError.\(expected), received \(error)")
-      return
-    }
-  }
-  Issue.record("Writer lease did not release before open-error assertion")
-}
-
-private func partition(_ label: String) throws -> CachePartitionID {
-  try CachePartitionID.derive(
-    domain: "akashic-disk-tests",
-    material: Data(label.utf8)
-  )
-}
-
-private func blobURL(root: URL, id: PhysicalBlobID) -> URL {
-  root.appendingPathComponent("blobs", isDirectory: true)
-    .appendingPathComponent(id.rawValue.uuidString.lowercased(), isDirectory: false)
-}
-
-private func blobFiles(in root: URL) -> [URL] {
-  let blobs = root.appendingPathComponent("blobs", isDirectory: true)
-  return
-    (try? FileManager.default.contentsOfDirectory(
-      at: blobs,
-      includingPropertiesForKeys: nil,
-      options: [.skipsHiddenFiles]
-    )) ?? []
-}
-
-private func withTemporaryDirectory<T>(
-  _ operation: (URL) async throws -> T
-) async throws -> T {
-  let root = FileManager.default.temporaryDirectory.appendingPathComponent(
-    "akashic-tests-\(UUID().uuidString.lowercased())",
-    isDirectory: true
-  )
-  defer { try? FileManager.default.removeItem(at: root) }
-  return try await operation(root)
-}
-
-private func expectAkashicError<T>(
-  _ expected: AkashicError,
-  operation: () async throws -> T
-) async {
-  do {
-    _ = try await operation()
-    Issue.record("Expected AkashicError.\(expected)")
-  } catch let error as AkashicError {
-    #expect(error == expected)
-  } catch {
-    Issue.record("Expected AkashicError.\(expected), received \(error)")
-  }
-}
-
-private func runExternalLockProbe(root: URL) -> Int32 {
-  let process = Process()
-  process.executableURL = URL(fileURLWithPath: "/usr/bin/lockf")
-  process.arguments = [
-    "-t", "0",
-    root.appendingPathComponent(".akashic-writer.lock").path,
-    "/usr/bin/true",
-  ]
-  process.standardOutput = FileHandle.nullDevice
-  process.standardError = FileHandle.nullDevice
-  do {
-    try process.run()
-    process.waitUntilExit()
-    return process.terminationStatus
-  } catch {
-    return -1
-  }
 }

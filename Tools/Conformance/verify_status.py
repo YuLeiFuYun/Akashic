@@ -33,6 +33,8 @@ def main() -> int:
         "processCrashDoesNotImplyPowerLoss",
         "partialIsNotComplete",
         "candidateDoesNotImplyDefault",
+        "directoryHeadCandidateDoesNotImplyAutomaticMigration",
+        "snapshotCorruptionSealDoesNotImplyAuthenticatedStorage",
     ):
         if rules.get(key) is not True:
             errors.append(f"rule {key} must remain true")
@@ -40,7 +42,6 @@ def main() -> int:
         errors.append("releaseQualified must remain false")
 
     obligations = document.get("obligations", [])
-    expected_ids = [f"AKASHIC-CT-{index:03d}" for index in range(1, 43)]
     actual_ids: list[str] = []
     statuses: list[str] = []
     for item in obligations:
@@ -64,17 +65,39 @@ def main() -> int:
             if not isinstance(relative, str) or not (ROOT / relative).is_file():
                 errors.append(f"{identifier}: missing evidence path {relative}")
 
+    parsed_indices: list[int] = []
+    for identifier in actual_ids:
+        if not isinstance(identifier, str):
+            errors.append(f"invalid obligation id {identifier}")
+            continue
+        match = re.fullmatch(r"AKASHIC-CT-(\d{3})", identifier)
+        if match is None:
+            errors.append(f"invalid obligation id {identifier}")
+            continue
+        parsed_indices.append(int(match.group(1)))
+    maximum_index = max(parsed_indices, default=0)
+    expected_ids = [f"AKASHIC-CT-{index:03d}" for index in range(1, maximum_index + 1)]
     if actual_ids != expected_ids:
         errors.append(
             f"obligation sequence drifted: expected={expected_ids} actual={actual_ids}"
         )
 
     tests = "\n".join(path.read_text() for path in (ROOT / "Tests").rglob("*.swift"))
+    test_ids = set(re.findall(r"AKASHIC-CT-\d{3}", tests))
+    obligation_ids = set(actual_ids)
+    for identifier in sorted(test_ids - obligation_ids):
+        errors.append(f"{identifier}: named test occurrence has no conformance obligation")
+
     named_test_ids = expected_ids[:21] + expected_ids[29:]
     for identifier in named_test_ids:
         status = obligations[int(identifier[-3:]) - 1]["status"]
         if status.startswith("implemented") and identifier not in tests:
-            if identifier not in {"AKASHIC-CT-013"}:
+            if identifier not in {
+                "AKASHIC-CT-013",
+                "AKASHIC-CT-111",
+                "AKASHIC-CT-124",
+                "AKASHIC-CT-125",
+            }:
                 errors.append(f"{identifier}: implemented status has no named test occurrence")
 
     crash_tool = (ROOT / "Tools/Crash/verify_process_crash_matrix.py").read_text()

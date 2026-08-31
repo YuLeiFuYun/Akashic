@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import math
@@ -26,15 +27,20 @@ MAXIMUM_RSS_BYTES = 256 * 1024 * 1024
 MAXIMUM_OPEN_FILE_DESCRIPTORS = 64
 MAXIMUM_STAGE_NANOSECONDS = 30 * 1_000_000_000
 MAXIMUM_REOPEN_NANOSECONDS = 5 * 1_000_000_000
+MAXIMUM_LOGICAL_WRITE_AMPLIFICATION = {
+    (64, 4 * 1024): 1.06,
+    (32, 64 * 1024): 1.005,
+    (8, 1024 * 1024): 1.001,
+}
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def load_probe(case: dict[str, int], root: Path) -> dict[str, Any]:
+def load_probe(case: dict[str, int], root: Path, binary: Path) -> dict[str, Any]:
     command = [
-        str(BINARY),
+        str(binary),
         "--root",
         str(root),
         "--blob-count",
@@ -72,7 +78,7 @@ def validate(case: dict[str, int], report: dict[str, Any]) -> list[str]:
         if not condition:
             errors.append(f"{label}: {message}")
 
-    require(report.get("schemaVersion") == 2, "unexpected schemaVersion")
+    require(report.get("schemaVersion") == 3, "unexpected schemaVersion")
     require(report.get("blobCount") == case["blobCount"], "blob count drifted")
     require(report.get("blobBytes") == case["blobBytes"], "blob size drifted")
     require(report.get("readPasses") == case["readPasses"], "read passes drifted")
@@ -82,10 +88,14 @@ def validate(case: dict[str, int], report: dict[str, Any]) -> list[str]:
     footprint = report.get("footprint", {})
     require(footprint.get("blobBytes") == payload, "final blob footprint differs from payload")
     require(footprint.get("blobFileCount") == case["blobCount"], "blob file count drifted")
-    require(footprint.get("metadataBytes", -1) >= 0, "metadata footprint is invalid")
+    require(footprint.get("metadataBytes", -1) >= 0, "metadata file footprint is invalid")
+    require(footprint.get("metadataAttributeBytes", -1) >= 0, "metadata xattr footprint is invalid")
+    require(footprint.get("metadataAttributeCount", -1) >= 0, "metadata xattr count is invalid")
+    require(footprint.get("metadataFileCount", 0) >= 1, "metadata file count is incomplete")
     require(
-        footprint.get("metadataFileCount", 0) >= case["blobCount"] + 1,
-        "metadata file count is incomplete",
+        footprint.get("metadataFileCount", 0) + footprint.get("metadataAttributeCount", 0)
+        >= case["blobCount"] + 1,
+        "logical metadata carrier count is incomplete",
     )
     require(
         footprint.get("fileCount")
@@ -95,11 +105,12 @@ def validate(case: dict[str, int], report: dict[str, Any]) -> list[str]:
     require(
         footprint.get("totalBytes")
         == footprint.get("blobBytes", 0) + footprint.get("metadataBytes", 0),
-        "total footprint accounting is inconsistent",
+        "regular-file footprint accounting is inconsistent",
     )
 
     metadata_write = report.get("logicalMetadataWriteBytes", -1)
-    require(metadata_write >= footprint.get("metadataBytes", 0), "metadata write accounting is too small")
+    final_logical_metadata = footprint.get("metadataBytes", 0) + footprint.get("metadataAttributeBytes", 0)
+    require(metadata_write >= final_logical_metadata, "metadata write accounting is too small")
     amplification = report.get("logicalWriteAmplification")
     expected_amplification = (payload + metadata_write) / payload
     require(
@@ -107,6 +118,14 @@ def validate(case: dict[str, int], report: dict[str, Any]) -> list[str]:
         and math.isfinite(amplification)
         and abs(amplification - expected_amplification) < 1e-9,
         "metadata write amplification is invalid",
+    )
+    maximum_amplification = MAXIMUM_LOGICAL_WRITE_AMPLIFICATION[
+        (case["blobCount"], case["blobBytes"])
+    ]
+    require(
+        isinstance(amplification, (int, float))
+        and amplification <= maximum_amplification,
+        f"logical write amplification exceeds retained bound: {amplification} > {maximum_amplification}",
     )
 
     usage = report.get("usage", {})
@@ -142,15 +161,24 @@ def capture_source_identity() -> dict[str, Any]:
 
 
 def main() -> int:
-    if not BINARY.is_file():
-        raise FileNotFoundError(f"missing resource probe binary: {BINARY}")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--binary",
+        type=Path,
+        default=BINARY,
+        help="source-bound AkashicResourceProbe binary (defaults to the legacy .build path)",
+    )
+    args = parser.parse_args()
+    binary = args.binary.resolve()
+    if not binary.is_file():
+        raise FileNotFoundError(f"missing resource probe binary: {binary}")
 
     reports: list[dict[str, Any]] = []
     errors: list[str] = []
     with tempfile.TemporaryDirectory(prefix="akashic-resource-envelope-") as temporary:
         temporary_root = Path(temporary)
         for index, case in enumerate(CASES):
-            report = load_probe(case, temporary_root / f"case-{index}")
+            report = load_probe(case, temporary_root / f"case-{index}", binary)
             reports.append(report)
             errors.extend(validate(case, report))
 
@@ -160,7 +188,7 @@ def main() -> int:
         "matrixID": "AKASHIC-LOCAL-RESOURCE-ENVELOPE-V2",
         "status": "failed" if errors else "passed",
         "sourceIdentitySHA256": identity["sourceIdentitySHA256"],
-        "binarySHA256": sha256(BINARY),
+        "binarySHA256": sha256(binary),
         "environment": {
             "platform": platform.platform(),
             "machine": platform.machine(),
@@ -172,6 +200,10 @@ def main() -> int:
             "maximumSampledOpenFileDescriptors": MAXIMUM_OPEN_FILE_DESCRIPTORS,
             "maximumStageNanoseconds": MAXIMUM_STAGE_NANOSECONDS,
             "maximumReopenNanoseconds": MAXIMUM_REOPEN_NANOSECONDS,
+            "maximumLogicalWriteAmplification": {
+                f"{count}x{size}": limit
+                for (count, size), limit in MAXIMUM_LOGICAL_WRITE_AMPLIFICATION.items()
+            },
         },
         "claims": {
             "energy": False,

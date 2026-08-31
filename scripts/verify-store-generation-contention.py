@@ -29,6 +29,20 @@ def run(command: list[str], timeout: int = 180) -> subprocess.CompletedProcess[s
 
 
 def main() -> int:
+    identity_before_path = ROOT / ".build/store-generation-source-identity-before.json"
+    identity_after_path = ROOT / ".build/store-generation-source-identity-after.json"
+    identity_before = run([
+        "python3",
+        "Tools/Identity/capture_source_identity.py",
+        "--output",
+        str(identity_before_path),
+    ])
+    if identity_before.returncode != 0:
+        print(identity_before.stdout)
+        print(identity_before.stderr)
+        return identity_before.returncode
+    source_identity = json.loads(identity_before_path.read_text())
+
     build = run(["xcrun", "swift", "build", "--product", "AkashicCrashProbe"])
     if build.returncode != 0:
         print(build.stdout)
@@ -71,11 +85,24 @@ def main() -> int:
                 errors.append("probe returned an empty identifier")
 
         unique = sorted(set(identifiers))
+        identity_after = run([
+            "python3",
+            "Tools/Identity/capture_source_identity.py",
+            "--output",
+            str(identity_after_path),
+            "--compare",
+            str(identity_before_path),
+        ])
+        if identity_after.returncode != 0:
+            errors.append("source identity changed during store-generation contention campaign")
         passed = not errors and len(identifiers) == PARTICIPANTS and len(unique) == 1
         head = run(["git", "rev-parse", "HEAD"])
         report = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "verifiedCommit": head.stdout.strip(),
+            "sourceIdentitySHA256": source_identity["sourceIdentitySHA256"],
+            "sourceIdentityFileCount": source_identity["fileCount"],
+            "sourceIdentityStableAcrossCampaign": identity_after.returncode == 0,
             "participants": PARTICIPANTS,
             "successfulParticipants": len(identifiers),
             "uniqueGenerationIdentifiers": unique,

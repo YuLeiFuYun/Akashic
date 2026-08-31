@@ -1,4 +1,5 @@
 import AkashicCore
+import CryptoKit
 import Foundation
 import Testing
 
@@ -46,6 +47,28 @@ struct BlobIdentityTests {
         #expect(first != otherDomain)
         #expect(throws: AkashicError.invalidIdentity) {
             _ = try CachePartitionID.derive(domain: "", material: material)
+        }
+    }
+
+    @Test("T102 partition derivation preserves v1 reference bytes without material-sized concatenation")
+    func partitionDerivationStreamingMatchesReference() throws {
+        let materials = [
+            Data(),
+            Data("opaque-host-material".utf8),
+            Data(repeating: 0xA5, count: 1_048_576),
+        ]
+        for domain in ["a", "test-a", String(repeating: "z", count: 128)] {
+            let domainBytes = Data(domain.utf8)
+            for material in materials {
+                var referenceInput = Data("akashic-partition-v1\u{0}".utf8)
+                referenceInput.append(domainBytes)
+                referenceInput.append(0)
+                referenceInput.append(material)
+                let reference = try CachePartitionID(
+                    bytes: Data(SHA256.hash(data: referenceInput))
+                )
+                #expect(try CachePartitionID.derive(domain: domain, material: material) == reference)
+            }
         }
     }
 

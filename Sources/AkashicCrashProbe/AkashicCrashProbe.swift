@@ -5,14 +5,24 @@ import Foundation
 
 @main
 struct AkashicCrashProbe {
-    private static let crashExitCode: Int32 = 91
+    private enum DirectoryHeadCrashPoint: String {
+        case afterPayloadRenamed
+        case afterRecordSet
+        case afterHeadSet
+        case afterDirectorySynced
+    }
+
+    static let crashExitCode: Int32 = 91
     private static let crashPayload = Data("akashic-process-crash-payload-v1".utf8)
 
     static func main() async throws {
         let arguments = CommandLine.arguments
         guard arguments.count >= 3 else {
             fputs(
-                "usage: AkashicCrashProbe crash|inspect|random-crash|inspect-random|generation "
+                "usage: AkashicCrashProbe crash|fast-crash|directory-head-seed|directory-head-crash "
+                    + "|directory-head-checkpoint-seed|directory-head-checkpoint-crash "
+                    + "|directory-head-checkpoint-recovery-crash|directory-head-checkpoint-raw-inspect "
+                    + "|directory-head-checkpoint-inspect|inspect|random-crash|inspect-random|generation "
                     + "|full-volume-seed|full-volume-commit|full-volume-stage-publish "
                     + "|full-volume-inspect|full-volume-durable <root> [argument ...]\n",
                 stderr
@@ -31,6 +41,64 @@ struct AkashicCrashProbe {
             }
             try await runCrash(root: root, point: point)
             Darwin.exit(92)
+        case "fast-crash":
+            guard arguments.count == 4,
+                let point = FileBlobStoreSwitchPoint(rawValue: arguments[3])
+            else {
+                fputs("invalid switch point\n", stderr)
+                Darwin.exit(64)
+            }
+            try await runFastCommitCrash(root: root, point: point)
+            Darwin.exit(92)
+        case "directory-head-seed":
+            guard arguments.count == 3 else {
+                fputs("usage: AkashicCrashProbe directory-head-seed <root>\n", stderr)
+                Darwin.exit(64)
+            }
+            try await runDirectoryHeadSeed(root: root)
+        case "directory-head-crash":
+            guard arguments.count == 4,
+                let point = DirectoryHeadCrashPoint(rawValue: arguments[3])
+            else {
+                fputs("invalid directory-head crash point\n", stderr)
+                Darwin.exit(64)
+            }
+            try await runDirectoryHeadCrash(root: root, point: point)
+            Darwin.exit(92)
+        case "directory-head-checkpoint-seed":
+            guard arguments.count == 3 else {
+                fputs("usage: AkashicCrashProbe directory-head-checkpoint-seed <root>\n", stderr)
+                Darwin.exit(64)
+            }
+            try await runDirectoryHeadCheckpointSeed(root: root)
+        case "directory-head-checkpoint-crash":
+            guard arguments.count == 4,
+                let point = DirectoryHeadCheckpointCrashPoint(rawValue: arguments[3])
+            else {
+                fputs("invalid directory-head checkpoint crash point\n", stderr)
+                Darwin.exit(64)
+            }
+            try await runDirectoryHeadCheckpointCrash(root: root, point: point)
+            Darwin.exit(92)
+        case "directory-head-checkpoint-recovery-crash":
+            guard arguments.count == 3 else {
+                fputs("usage: AkashicCrashProbe directory-head-checkpoint-recovery-crash <root>\n", stderr)
+                Darwin.exit(64)
+            }
+            try await runDirectoryHeadCheckpointRecoveryCrash(root: root)
+            Darwin.exit(92)
+        case "directory-head-checkpoint-raw-inspect":
+            guard arguments.count == 3 else {
+                fputs("usage: AkashicCrashProbe directory-head-checkpoint-raw-inspect <root>\n", stderr)
+                Darwin.exit(64)
+            }
+            try inspectDirectoryHeadCheckpointRaw(root: root)
+        case "directory-head-checkpoint-inspect":
+            guard arguments.count == 3 else {
+                fputs("usage: AkashicCrashProbe directory-head-checkpoint-inspect <root>\n", stderr)
+                Darwin.exit(64)
+            }
+            try await inspectDirectoryHeadCheckpoint(root: root)
         case "inspect":
             try await inspect(root: root, payload: crashPayload)
         case "random-crash":
@@ -177,6 +245,73 @@ struct AkashicCrashProbe {
         }
     }
 
+    private static func runFastCommitCrash(
+        root: URL,
+        point: FileBlobStoreSwitchPoint
+    ) async throws {
+        let digest = BlobDigest.sha256(of: crashPayload)
+        let partition = try testPartition()
+        let store = try await FileBlobStore.open(
+            root: root,
+            faultInjector: { observed in
+                if observed == point { Darwin._exit(crashExitCode) }
+            }
+        )
+        _ = try await store.commit(
+            data: crashPayload,
+            digest: digest,
+            partition: partition
+        )
+    }
+
+    private static func runDirectoryHeadSeed(root: URL) async throws {
+        let store = try await FileBlobStore.open(root: root)
+        guard try await store.migrateLegacyManifestToDirectoryHeadSchema4() else {
+            fputs("directory-head carrier unavailable\n", stderr)
+            Darwin.exit(66)
+        }
+    }
+
+    private static func runDirectoryHeadCrash(
+        root: URL,
+        point: DirectoryHeadCrashPoint
+    ) async throws {
+        let system = FileBlobStoreDirectoryHeadOperations.system
+        let operations = FileBlobStoreDirectoryHeadOperations(
+            listAttributes: system.listAttributes,
+            readAttribute: system.readAttribute,
+            setAttribute: { name, value, url, flags in
+                try system.setAttribute(name, value, url, flags)
+                if point == .afterRecordSet, name.hasPrefix("dev.akashic.md1.") {
+                    Darwin._exit(crashExitCode)
+                }
+                if point == .afterHeadSet, name.hasPrefix("dev.akashic.mh1.") {
+                    Darwin._exit(crashExitCode)
+                }
+            },
+            removeAttribute: system.removeAttribute,
+            synchronizeDirectory: { url in
+                try system.synchronizeDirectory(url)
+                if point == .afterDirectorySynced { Darwin._exit(crashExitCode) }
+            }
+        )
+        let store = try await FileBlobStore.open(
+            root: root,
+            faultInjector: { observed in
+                if point == .afterPayloadRenamed, observed == .afterBlobRenamed {
+                    Darwin._exit(crashExitCode)
+                }
+            },
+            directoryHeadOperations: operations
+        )
+        let digest = BlobDigest.sha256(of: crashPayload)
+        _ = try await store.commit(
+            data: crashPayload,
+            digest: digest,
+            partition: testPartition()
+        )
+    }
+
     private static func runRandomCrash(
         root: URL,
         payloadByteCount: Int,
@@ -223,8 +358,12 @@ struct AkashicCrashProbe {
             options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
         )) ?? []).count
         let temporaryCount = recursiveChildren(root: root).filter {
-            $0.lastPathComponent.hasPrefix(".durable-tmp-")
-                || $0.lastPathComponent.hasPrefix(".tmp-")
+            let name = $0.lastPathComponent
+            return name.hasPrefix(".durable-tmp-")
+                || name.hasPrefix(".tmp-")
+                || name.hasPrefix(".fast-xattr-blob-")
+                || name.hasPrefix(".fast-blob-")
+                || name.hasPrefix(".fast-record-")
         }.count
         let result: [String: Any] = [
             "schemaVersion": 1,
@@ -254,7 +393,7 @@ struct AkashicCrashProbe {
         )
     }
 
-    private static func recursiveChildren(root: URL) -> [URL] {
+    static func recursiveChildren(root: URL) -> [URL] {
         guard let enumerator = FileManager.default.enumerator(
             at: root,
             includingPropertiesForKeys: nil,

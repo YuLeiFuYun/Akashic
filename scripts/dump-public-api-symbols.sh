@@ -26,6 +26,12 @@ if [ -z "$MODULE_PATH" ]; then
     echo 'production Swift modules were not produced in one search path' >&2
     exit 1
 fi
+ATOMIC_MODULE_MAP=$(find "$SCRATCH" -type f -path '*/GeneratedModuleMaps/CAkashicAtomics.modulemap' -print | head -n 1)
+if [ -z "$ATOMIC_MODULE_MAP" ]; then
+    echo 'CAkashicAtomics module map was not produced by the package build' >&2
+    exit 1
+fi
+ATOMIC_HEADER_DIR="$ROOT/Sources/CAkashicAtomics/include"
 ARCH=$(uname -m)
 case "$ARCH" in arm64|x86_64) ;; *) echo "unsupported host architecture: $ARCH" >&2; exit 1 ;; esac
 TARGET="${ARCH}-apple-macosx12.0"
@@ -37,6 +43,8 @@ do
         -target "$TARGET" \
         -sdk "$SDK" \
         -I "$MODULE_PATH" \
+        -Xcc "-fmodule-map-file=$ATOMIC_MODULE_MAP" \
+        -Xcc "-I$ATOMIC_HEADER_DIR" \
         -minimum-access-level public \
         -skip-synthesized-members \
         -omit-extension-block-symbols \

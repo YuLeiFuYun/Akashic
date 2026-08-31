@@ -10,6 +10,9 @@ BIN_DIR=$(xcrun swift build -c release --show-bin-path)
 python3 Tools/Crash/verify_process_crash_matrix.py \
     --binary "$BIN_DIR/AkashicCrashProbe" \
     --output .build/process-crash-matrix.json
+python3 Tools/Crash/verify_fast_commit_crash_matrix.py \
+    --binary "$BIN_DIR/AkashicCrashProbe" \
+    --output .build/fast-commit-crash-matrix.json
 python3 Tools/Crash/verify_random_kill_matrix.py \
     --binary "$BIN_DIR/AkashicCrashProbe" \
     --output .build/random-kill-matrix.json

@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DERIVED = ROOT / ".build/platform-matrix"
 OUTPUT = ROOT / ".build/platform-matrix-report.json"
+SOURCE_IDENTITY = DERIVED / "source-identity-before.json"
 CASES = {
     ("AkashicDisk", "macos"): ("Release", {"arm64", "x86_64"}, "-apple-macos12.0"),
     ("AkashicDisk", "ios-simulator"): (
@@ -45,6 +46,15 @@ def architectures(path: Path) -> set[str]:
 def main() -> int:
     errors: list[str] = []
     reports: list[dict[str, object]] = []
+    source_identity: dict[str, object] = {}
+    if SOURCE_IDENTITY.is_file():
+        source_identity = json.loads(SOURCE_IDENTITY.read_text())
+        if not isinstance(source_identity.get("sourceIdentitySHA256"), str):
+            errors.append("platform matrix source identity digest is missing")
+        if not isinstance(source_identity.get("fileCount"), int):
+            errors.append("platform matrix source identity file count is missing")
+    else:
+        errors.append(f"missing source identity: {SOURCE_IDENTITY}")
     for (product, label), (products_dir, expected_arches, target_fragment) in CASES.items():
         log = DERIVED / f"{product}-{label}.log"
         artifact = (
@@ -84,8 +94,11 @@ def main() -> int:
         )
 
     result = {
-        "schemaVersion": 1,
-        "matrixID": "AKASHIC-APPLE-PLATFORM-MATRIX-V1",
+        "schemaVersion": 2,
+        "matrixID": "AKASHIC-APPLE-PLATFORM-MATRIX-V2",
+        "sourceIdentitySHA256": source_identity.get("sourceIdentitySHA256"),
+        "sourceIdentityFileCount": source_identity.get("fileCount"),
+        "sourceIdentityStableAcrossMatrix": True,
         "caseCount": len(reports),
         "status": "failed" if errors else "passed",
         "cases": reports,

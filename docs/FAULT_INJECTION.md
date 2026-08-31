@@ -6,32 +6,50 @@ process-termination test is never promoted into a physical power-loss claim.
 ## 1. System-call behavior
 
 `DurableFileWriter` owns a package-only synchronous syscall table. Production
-always binds it to Darwin `write(2)`, `fsync(2)`, `close(2)` and same-directory
-`rename(2)`; external consumers cannot supply replacements.
+always binds it to Darwin `open(2)`, `write(2)`, `fsync(2)`, `close(2)` and
+same-directory `rename(2)`; external consumers cannot supply replacements.
 
-Eight retained tests establish these local properties:
+Eleven retained tests establish these local properties:
 
 1. repeated partial positive `write` returns are consumed until every byte is
    written;
 2. `write` returning `EINTR` is retried;
 3. file and parent-directory `fsync` returning `EINTR` are retried;
-4. `ENOSPC` after a successful prefix write preserves the old destination and
+4. failure to open the unique temporary file preserves the old destination and
+   leaves no durable temporary file;
+5. `ENOSPC` after a successful prefix write preserves the old destination and
    removes the temporary file;
-5. file-`fsync` failure preserves the old destination and removes the
+6. file-`fsync` failure preserves the old destination and removes the
    temporary file;
-6. a failing `close` is not retried on the same descriptor, because descriptor
+7. a failing `close` is not retried on the same descriptor, because descriptor
    state after an error must not be guessed; the old destination is preserved;
-7. rename `ENOSPC` preserves the old destination and removes the temporary
+8. rename `ENOSPC` preserves the old destination and removes the temporary
    file;
-8. directory-`fsync` failure is reported after rename. The replacement may
-   already be visible, but directory-entry durability is not established.
+9. failure to open the parent directory is reported after rename. The
+   replacement may already be visible, but directory-entry durability is not
+   established;
+10. directory-`fsync` failure has the same visible-but-not-proven-durable
+    boundary after rename;
+11. the package-only deferred-directory-sync variant still performs the full file
+    write/fsync/close/rename sequence but intentionally emits no parent-directory
+    sync switch point, so only a surrounding same-directory transaction may use
+    it and must establish that directory durability before returning success.
 
-The last case is intentionally not normalized into “old value preserved”. It
-creates an ambiguous-durability outcome that higher layers must treat as an
-error and resolve by reopening or reconciling state.
+Cases 9–10 are intentionally not normalized into “old value
+preserved”. `DurableFileWriter` exposes a package-only rename observer that is
+false when rename itself fails and true before either post-rename directory
+failure can surface. FileBlobStore uses that phase fact—not the errno—to mark a
+writer `reopen-required` whenever logical authority may already be visible but
+the actor has not adopted the matching manifest/generation/sequence. The stale
+writer then rejects stateful access until it is released and a new instance
+replays disk authority. CT-075–077 exercise fast xattr, fast sidecar fallback,
+explicit sidecar, after-publication, full-checkpoint, tombstone and same-key
+replacement variants. These remain process-visible recovery claims, not
+power-loss proofs.
 
-The seam does not replace `open`, ownership/mode validation, metadata writes or
-security checks.
+The seam does not replace ownership/mode validation, metadata writes or
+security checks. Injected `open(2)` errors prove local control-flow semantics,
+not real ACL, different-owner or mounted-filesystem behavior.
 
 ## 2. Permission transition
 
@@ -90,16 +108,42 @@ The retained cases establish three separate failure boundaries:
    published blob remains and temporary-file count is zero.
 
 Quota matrix schema 2 requires all three cases to expose kernel `ENOSPC`; fault
-aggregate V5 binds that contract. The report fixes `wholeContainerFullClaim=false`,
+aggregate V6 binds that contract. The report fixes `wholeContainerFullClaim=false`,
 `physicalDeviceQualification=false` and `powerLossClaim=false`.
 
 ## 5. Process termination
 
-Two process-level programs use the release `AkashicCrashProbe` executable:
+Six process-level evidence families use the same release `AkashicCrashProbe` executable:
 
-1. Eleven exact switch points terminate with `_exit(91)` after blob/manifest
-   write, file sync, rename, directory sync and logical publication boundaries.
-2. The random-kill campaign runs three deterministic rounds. Each round starts
+1. The explicit stage/publish matrix exercises eleven exact switch points and
+   terminates with `_exit(91)` after blob/manifest write, file sync, rename,
+   directory sync and logical publication boundaries.
+2. A separate schema3 fast-commit matrix reuses the same eleven named switch points but
+   runs the payload-xattr transaction: payload and create authority share one inode/fsync,
+   and the UUID blob rename publishes both. The aggregate requires this matrix to
+   identify `blob inode manifest xattr` as its authority carrier and to use the
+   exact same crash-probe binary as the stage/publish matrix.
+3. The package-internal schema4 directory-head matrix exercises four physical
+   boundaries of the normal single-key candidate transaction: payload rename,
+   record-xattr write, checksummed head replacement and the coalesced `blobs`
+   directory sync. Reopen must produce miss / miss / hit / hit respectively. This
+   matrix is intentionally separate from both schema3 matrices so their evidence
+   cannot be reused after a carrier/commit-point change.
+4. A separate schema4 **distinct-key checkpoint** matrix seeds 511 delta keys and
+   crashes the 512th mutation at seven boundaries: snapshot data write, snapshot
+   file sync, snapshot rename, snapshot parent-directory sync, first empty-head
+   write, second empty-head write and head-directory sync. The first two recover
+   the old state; snapshot rename and every later point recover the complete new
+   512-entry state. This proves the full-snapshot commit point separately from the
+   single-key head transaction.
+5. The schema4 recovery-of-recovery case starts from a checkpoint snapshot that is
+   already authoritative but has zero current-generation heads. Recovery is then
+   killed after writing the first repair head and again after writing the second.
+   Raw inspection must show the monotonic physical progression 0 -> 1 -> 2 heads,
+   with no current-generation delta records, and a final normal reopen must recover
+   every entry. A crash while repairing recovery metadata therefore cannot turn a
+   committed snapshot into a partial logical state.
+6. The random-kill campaign runs three deterministic rounds. Each round starts
    an 8 MiB stage/publish transaction after a ready handshake, then contains
    one strict pre-write miss anchor, one strict committed-hit anchor and 24
    fixed-seed delays in the 0–10 ms window.
@@ -133,7 +177,7 @@ physicalDeviceQualification = false
 Still outside the proven domain:
 
 - real filesystem-induced `fsync`, rename and close errors;
-- injected or real `open`, ACL and different-owner transition failures;
+- real filesystem-induced `open`, ACL and different-owner transition failures;
 - multi-hour/high-iteration random-kill campaigns;
 - controller-cache loss, physical power removal and `F_FULLFSYNC` comparison;
 - stable physical-device I/O, energy and thermal qualification.

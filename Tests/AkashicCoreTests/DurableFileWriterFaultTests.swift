@@ -89,6 +89,63 @@ struct DurableFileWriterFaultTests {
         }
     }
 
+    @Test("Deferred directory sync performs only file fsync and never reports directory-synced")
+    func deferredDirectorySynchronizationStopsAfterRename() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("state.bin")
+            let payload = Data(repeating: 0x73, count: 4_096)
+            var synchronizeCalls = 0
+            let observed = DurableFileSwitchPointRecorder()
+
+            try DurableFileWriter.writeReplacingDeferringDirectorySync(
+                payload,
+                to: destination,
+                faultInjector: { observed.record($0) },
+                operations: systemOperations(
+                    synchronize: { descriptor in
+                        synchronizeCalls += 1
+                        return Darwin.fsync(descriptor)
+                    }
+                )
+            )
+
+            #expect(synchronizeCalls == 1)
+            #expect(observed.snapshot() == [.afterDataWritten, .afterFileSynced, .afterRename])
+            #expect(try Data(contentsOf: destination) == payload)
+            #expect(durableTemporaryFiles(in: root).isEmpty)
+        }
+    }
+
+    @Test("Temporary-file open failure preserves the old destination")
+    func temporaryOpenFailurePreservesOldDestination() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("state.bin")
+            let old = Data("old-before-open".utf8)
+            let replacement = Data(repeating: 0x59, count: 4_096)
+            try old.write(to: destination)
+            var openCalls = 0
+
+            awaitPOSIXError(.EACCES) {
+                try DurableFileWriter.writeReplacing(
+                    replacement,
+                    to: destination,
+                    faultInjector: { _ in },
+                    operations: systemOperations(
+                        open: { _, _, _ in
+                            openCalls += 1
+                            errno = EACCES
+                            return -1
+                        }
+                    )
+                )
+            }
+
+            #expect(openCalls == 1)
+            #expect(try Data(contentsOf: destination) == old)
+            #expect(durableTemporaryFiles(in: root).isEmpty)
+        }
+    }
+
     @Test("ENOSPC after a partial write preserves the old destination")
     func noSpaceAfterPartialWritePreservesOldDestination() throws {
         try withTemporaryDirectory { root in
@@ -193,12 +250,14 @@ struct DurableFileWriterFaultTests {
             let old = Data("old-before-rename".utf8)
             let replacement = Data(repeating: 0x63, count: 4_096)
             try old.write(to: destination)
+            var renameObserved = false
 
             awaitPOSIXError(.ENOSPC) {
                 try DurableFileWriter.writeReplacing(
                     replacement,
                     to: destination,
                     faultInjector: { _ in },
+                    renameObserver: { renameObserved = true },
                     operations: systemOperations(
                         rename: { _, _ in
                             errno = ENOSPC
@@ -208,7 +267,44 @@ struct DurableFileWriterFaultTests {
                 )
             }
 
+            #expect(!renameObserved)
             #expect(try Data(contentsOf: destination) == old)
+            #expect(durableTemporaryFiles(in: root).isEmpty)
+        }
+    }
+
+    @Test("Directory open failure reports ambiguous durability after visible rename")
+    func directoryOpenFailureReportsVisibleReplacement() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("state.bin")
+            let old = Data("old-before-directory-open".utf8)
+            let replacement = Data(repeating: 0x65, count: 4_096)
+            try old.write(to: destination)
+            var openCalls = 0
+
+            var renameObserved = false
+            awaitPOSIXError(.EACCES) {
+                try DurableFileWriter.writeReplacing(
+                    replacement,
+                    to: destination,
+                    faultInjector: { _ in },
+                    renameObserver: { renameObserved = true },
+                    operations: systemOperations(
+                        open: { path, flags, mode in
+                            openCalls += 1
+                            if path == root.path {
+                                errno = EACCES
+                                return -1
+                            }
+                            return path.withCString { Darwin.open($0, flags, mode) }
+                        }
+                    )
+                )
+            }
+
+            #expect(openCalls == 2)
+            #expect(renameObserved)
+            #expect(try Data(contentsOf: destination) == replacement)
             #expect(durableTemporaryFiles(in: root).isEmpty)
         }
     }
@@ -221,12 +317,14 @@ struct DurableFileWriterFaultTests {
             let replacement = Data(repeating: 0x64, count: 4_096)
             try old.write(to: destination)
             var synchronizeCalls = 0
+            var renameObserved = false
 
             awaitPOSIXError(.EIO) {
                 try DurableFileWriter.writeReplacing(
                     replacement,
                     to: destination,
                     faultInjector: { _ in },
+                    renameObserver: { renameObserved = true },
                     operations: systemOperations(
                         synchronize: { descriptor in
                             synchronizeCalls += 1
@@ -241,13 +339,34 @@ struct DurableFileWriterFaultTests {
             }
 
             #expect(synchronizeCalls == 2)
+            #expect(renameObserved)
             #expect(try Data(contentsOf: destination) == replacement)
             #expect(durableTemporaryFiles(in: root).isEmpty)
         }
     }
 }
 
+private final class DurableFileSwitchPointRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [DurableFileWriteSwitchPoint] = []
+
+    func record(_ value: DurableFileWriteSwitchPoint) {
+        lock.lock()
+        values.append(value)
+        lock.unlock()
+    }
+
+    func snapshot() -> [DurableFileWriteSwitchPoint] {
+        lock.lock()
+        defer { lock.unlock() }
+        return values
+    }
+}
+
 private func systemOperations(
+    open: @escaping DurableFileOpenOperation = { path, flags, mode in
+        path.withCString { Darwin.open($0, flags, mode) }
+    },
     write: @escaping DurableFileWriteOperation = { descriptor, bytes, count in
         Darwin.write(descriptor, bytes, count)
     },
@@ -266,6 +385,7 @@ private func systemOperations(
     }
 ) -> DurableFileSystemOperations {
     DurableFileSystemOperations(
+        open: open,
         write: write,
         synchronize: synchronize,
         close: close,

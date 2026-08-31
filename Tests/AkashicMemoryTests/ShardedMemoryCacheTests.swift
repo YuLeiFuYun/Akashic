@@ -1,4 +1,4 @@
-import AkashicMemory
+@testable import AkashicMemory
 import Testing
 
 @Suite("AkashicMemory sharded SIEVE cache")
@@ -103,6 +103,224 @@ struct ShardedMemoryCacheTests {
     #expect(cache.count <= 4)
   }
 
+  @Test("AKASHIC-CT-043 global spare prevents shard-local premature eviction")
+  func skewedShardUsesIdleGlobalBudgetBeforeEviction() {
+    let cache = ShardedMemoryCache<RoutedKey, Int>(costLimit: 64, shardCount: 8)
+    let first = RoutedKey(identity: 101, routeHash: 0)
+    let second = RoutedKey(identity: 102, routeHash: 0)
+    let third = RoutedKey(identity: 103, routeHash: 0)
+
+    cache.insert(1, for: first, cost: 6)
+    cache.insert(2, for: second, cost: 6)
+    cache.insert(3, for: third, cost: 6)
+
+    #expect(cache.value(for: first) == 1)
+    #expect(cache.value(for: second) == 2)
+    #expect(cache.value(for: third) == 3)
+    #expect(cache.currentCost == 18)
+    #expect(cache.currentCost <= cache.costLimit)
+  }
+
+  @Test("AKASHIC-CT-044 released global spare is reusable across shards")
+  func releasedGlobalSpareIsReusableAcrossShards() {
+    let cache = ShardedMemoryCache<RoutedKey, Int>(costLimit: 16, shardCount: 2)
+    let left = (0 ..< 8).map { RoutedKey(identity: 200 + $0, routeHash: 0) }
+    let right = (0 ..< 8).map { RoutedKey(identity: 300 + $0, routeHash: 1) }
+    for (index, key) in left.enumerated() {
+      cache.insert(index, for: key, cost: 1)
+    }
+    for (index, key) in right.enumerated() {
+      cache.insert(100 + index, for: key, cost: 1)
+    }
+    #expect(cache.currentCost == 16)
+
+    // 首个额外写确认“全局已满”，但只能在目标分片淘汰，不能误伤另一分片。
+    let firstExtra = RoutedKey(identity: 400, routeHash: 0)
+    cache.insert(400, for: firstExtra, cost: 1)
+    #expect(cache.currentCost == 16)
+    for (index, key) in right.enumerated() {
+      #expect(cache.value(for: key) == 100 + index)
+    }
+
+    // 删除另一分片一个对象后，全局重新出现 1 unit spare。下一次目标分片已满的写
+    // 必须借用这个 spare，而不是继续做 shard-local eviction。
+    cache.remove(right[0])
+    #expect(cache.currentCost == 15)
+    let survivors = (left + Array(right.dropFirst()) + [firstExtra]).filter {
+      cache.value(for: $0) != nil
+    }
+    #expect(survivors.count == 15)
+
+    let secondExtra = RoutedKey(identity: 401, routeHash: 0)
+    cache.insert(401, for: secondExtra, cost: 1)
+    #expect(cache.currentCost == 16)
+    #expect(cache.count == 16)
+    for key in survivors {
+      #expect(cache.value(for: key) != nil)
+    }
+    #expect(cache.value(for: secondExtra) == 401)
+  }
+
+  @Test("AKASHIC-CT-050 cross-shard slow path releases only the real deficit")
+  func crossShardSlowPathDoesNotEvenlyRepartitionDonors() {
+    let cache = ShardedMemoryCache<RoutedKey, Int>(costLimit: 100, shardCount: 3)
+    let heavy = (0 ..< 98).map { RoutedKey(identity: 500 + $0, routeHash: 1) }
+    let light = RoutedKey(identity: 700, routeHash: 2)
+    for (index, key) in heavy.enumerated() {
+      cache.insert(index, for: key, cost: 1)
+    }
+    cache.insert(700, for: light, cost: 1)
+    #expect(cache.currentCost == 99)
+
+    // 目标 shard 需要一个 cost=2 的对象，当前只有 1 unit global spare，所以真正的
+    // cross-shard deficit 只有 1。旧均分慢路径会把 heavy shard 从 98 压到 49；
+    // 当前实现只能释放一个 1-unit victim，然后用满精确 100-unit 全局预算。
+    let incoming = RoutedKey(identity: 800, routeHash: 0)
+    cache.insert(800, for: incoming, cost: 2)
+
+    #expect(cache.value(for: incoming) == 800)
+    #expect(cache.value(for: light) == 700)
+    #expect(cache.currentCost == 100)
+    #expect(cache.count == 99)
+    let heavySurvivors = heavy.filter { cache.value(for: $0) != nil }.count
+    #expect(heavySurvivors == 97)
+  }
+
+  @Test("AKASHIC-CT-051 exact global shrink preserves an equal-cost skewed resident")
+  func exactGlobalShrinkDoesNotEvictEqualCostResident() {
+    let cache = ShardedMemoryCache<RoutedKey, Int>(costLimit: 75, shardCount: 8)
+    let hot = RoutedKey(identity: 900, routeHash: 5)
+    cache.insert(900, for: hot, cost: 60)
+    #expect(cache.currentCost == 60)
+    #expect(cache.value(for: hot) == 900)
+
+    let summary = cache.updateCostLimit(60)
+
+    #expect(summary.itemCount == 0)
+    #expect(summary.costBytes == 0)
+    #expect(cache.currentCost == 60)
+    #expect(cache.count == 1)
+    #expect(cache.value(for: hot) == 900)
+    #expect(cache.costLimit == 60)
+
+    let expansion = cache.updateCostLimit(75)
+    #expect(expansion.itemCount == 0)
+    #expect(expansion.costBytes == 0)
+    #expect(cache.currentCost == 60)
+    #expect(cache.count == 1)
+    #expect(cache.value(for: hot) == 900)
+    #expect(cache.costLimit == 75)
+  }
+
+  @Test("AKASHIC-CT-052 global shrink avoids fixed-shard over-release")
+  func globalShrinkUsesBestFitCurrentVictimAcrossShards() {
+    let cache = ShardedMemoryCache<RoutedKey, Int>(costLimit: 102, shardCount: 2)
+    let smallA = RoutedKey(identity: 1_000, routeHash: 0)
+    let smallB = RoutedKey(identity: 1_001, routeHash: 0)
+    let large = RoutedKey(identity: 1_002, routeHash: 1)
+    cache.insert(1_000, for: smallA, cost: 1)
+    cache.insert(1_001, for: smallB, cost: 1)
+    cache.insert(1_002, for: large, cost: 100)
+    #expect(cache.currentCost == 102)
+    #expect(cache.count == 3)
+
+    // Only one unit must be released. A shard-index ordered resize would preserve shard 0's two
+    // unit entries, force shard 1 from 100 to 99, and therefore evict the entire 100-cost resident.
+    // Global best-fit among each shard's current legal SIEVE victim must choose one 1-cost entry.
+    let summary = cache.updateCostLimit(101)
+
+    #expect(summary.itemCount == 1)
+    #expect(summary.costBytes == 1)
+    #expect(cache.currentCost == 101)
+    #expect(cache.count == 2)
+    #expect(cache.costLimit == 101)
+    #expect(cache.value(for: large) == 1_002)
+    let smallSurvivors = [smallA, smallB].filter { cache.value(for: $0) != nil }.count
+    #expect(smallSurvivors == 1)
+  }
+
+  @Test("AKASHIC-CT-053 insert donor selection avoids object-granularity over-release")
+  func crossShardInsertUsesBestFitCurrentDonorVictim() {
+    let cache = ShardedMemoryCache<RoutedKey, Int>(costLimit: 102, shardCount: 3)
+    let large = RoutedKey(identity: 1_100, routeHash: 1)
+    let small = RoutedKey(identity: 1_101, routeHash: 2)
+    let incoming = RoutedKey(identity: 1_102, routeHash: 0)
+    cache.insert(1_100, for: large, cost: 100)
+    cache.insert(1_101, for: small, cost: 1)
+    #expect(cache.currentCost == 101)
+
+    // Incoming cost=2 can use the one global spare unit, so the real cross-shard deficit is one.
+    // Target-relative ring order sees shard 1 first, but its only legal victim costs 100; shard 2
+    // has an exact 1-cost victim. Best-fit must preserve the large resident and release only one.
+    cache.insert(1_102, for: incoming, cost: 2)
+
+    #expect(cache.value(for: incoming) == 1_102)
+    #expect(cache.value(for: large) == 1_100)
+    #expect(cache.value(for: small) == nil)
+    #expect(cache.currentCost == 102)
+    #expect(cache.count == 2)
+  }
+
+  @Test("AKASHIC-CT-069 equal-cost donor tie uses an exact local successor when available")
+  func equalCostTieUsesExactSuccessorWithoutOverRelease() {
+    let cache = ShardedMemoryCache<RoutedKey, Int>(costLimit: 16, shardCount: 2)
+    let leftFirst = RoutedKey(identity: 1_200, routeHash: 0)
+    let leftSecond = RoutedKey(identity: 1_201, routeHash: 0)
+    let rightFirst = RoutedKey(identity: 1_202, routeHash: 1)
+    let rightSecond = RoutedKey(identity: 1_203, routeHash: 1)
+
+    // Both shards expose a 1-cost immediate victim. The legacy ring tie chose shard 0, then greedily
+    // consumed its 6-cost successor and eventually had to delete the 8-cost shard-1 successor too:
+    // release 16 for a 9-unit deficit. Shard 1's tied 1-cost victim instead exposes an exact 8-cost
+    // successor, so the safe exact-successor tie break can release exactly 9 without changing the
+    // immediate greedy cost class or either shard's local SIEVE order.
+    cache.insert(1_200, for: leftFirst, cost: 1)
+    cache.insert(1_201, for: leftSecond, cost: 6)
+    cache.insert(1_202, for: rightFirst, cost: 1)
+    cache.insert(1_203, for: rightSecond, cost: 8)
+    #expect(cache.currentCost == 16)
+
+    let summary = cache.updateCostLimit(7)
+
+    #expect(summary.itemCount == 2)
+    #expect(summary.costBytes == 9)
+    #expect(cache.currentCost == 7)
+    #expect(cache.value(for: leftFirst) == 1_200)
+    #expect(cache.value(for: leftSecond) == 1_201)
+    #expect(cache.value(for: rightFirst) == nil)
+    #expect(cache.value(for: rightSecond) == nil)
+  }
+
+  @Test("AKASHIC-CT-070 cross-shard insert tie uses an exact local successor when available")
+  func crossShardInsertTieUsesExactSuccessorWithoutOverRelease() {
+    let cache = ShardedMemoryCache<RoutedKey, Int>(costLimit: 16, shardCount: 3)
+    let leftFirst = RoutedKey(identity: 1_300, routeHash: 1)
+    let leftSecond = RoutedKey(identity: 1_301, routeHash: 1)
+    let rightFirst = RoutedKey(identity: 1_302, routeHash: 2)
+    let rightSecond = RoutedKey(identity: 1_303, routeHash: 2)
+    let incoming = RoutedKey(identity: 1_304, routeHash: 0)
+
+    cache.insert(1_300, for: leftFirst, cost: 1)
+    cache.insert(1_301, for: leftSecond, cost: 6)
+    cache.insert(1_302, for: rightFirst, cost: 1)
+    cache.insert(1_303, for: rightSecond, cost: 8)
+    #expect(cache.currentCost == 16)
+
+    // Target shard 0 has no resident budget and global spare is zero, so this 9-cost insert needs
+    // exactly nine donor units. Both donor shards expose an immediate 1-cost victim. The shard-2 tie
+    // exposes an exact 8-cost successor; choosing it must preserve shard 1 and avoid the legacy
+    // 1+6+1+8 release cascade before admitting the incoming object.
+    cache.insert(1_304, for: incoming, cost: 9)
+
+    #expect(cache.currentCost == 16)
+    #expect(cache.count == 3)
+    #expect(cache.value(for: incoming) == 1_304)
+    #expect(cache.value(for: leftFirst) == 1_300)
+    #expect(cache.value(for: leftSecond) == 1_301)
+    #expect(cache.value(for: rightFirst) == nil)
+    #expect(cache.value(for: rightSecond) == nil)
+  }
+
   @Test("AKASHIC-CT-038 entry larger than one shard borrows global budget")
   func oversizedShardEntryUsesGlobalBudget() {
     let cache = ShardedMemoryCache<Int, Int>(costLimit: 64, shardCount: 8)
@@ -193,6 +411,82 @@ struct ShardedMemoryCacheTests {
     #expect(cache.value(for: 1) == nil)
     #expect(cache.currentCost <= 16)
     #expect(cache.costLimit == 16)
+  }
+
+  @Test("AKASHIC-CT-068 two-victim forecast matches actual shard-local SIEVE removals")
+  func twoVictimForecastMatchesActualRemovals() {
+    for seed in 1 ... 24 {
+      let shard = ShardedMemoryShard<Int, Int>(costLimit: 64, bucketHashShift: 0)
+      var generator = ShardedGenerator(seed: UInt64(seed))
+
+      for step in 0 ..< 600 {
+        let key = generator.nextInt(upperBound: 47)
+        switch generator.nextInt(upperBound: 100) {
+        case 0 ..< 55:
+          let cost = generator.nextInt(upperBound: 12) + 1
+          shard.acquire()
+          shard.insertLocked(
+            step,
+            for: key,
+            rawHash: key.hashValue,
+            normalizedCost: cost
+          )
+          shard.release()
+        case 55 ..< 85:
+          _ = shard.value(for: key, rawHash: key.hashValue)
+        default:
+          shard.acquire()
+          shard.removeLocked(key, rawHash: key.hashValue)
+          shard.release()
+        }
+
+        if step.isMultiple(of: 7) {
+          shard.acquire()
+          let forecast = shard.nextTwoVictimCostsLocked()
+          let immediate = shard.nextVictimCostLocked()
+          let first = shard.removeNextVictimLocked()
+          let second = shard.removeNextVictimLocked()
+          shard.release()
+
+          #expect(forecast?.first == immediate)
+          #expect(forecast?.first == first)
+          #expect(forecast?.second == second)
+        }
+      }
+    }
+  }
+
+  @Test("AKASHIC-CT-054 all-visited epoch fast path preserves classic SIEVE semantics")
+  func allVisitedEpochFastPathMatchesClassicSIEVE() {
+    let sharded = ShardedMemoryCache<Int, Int>(costLimit: 32, shardCount: 1)
+    let classic = MemoryCache<Int, Int>(costLimit: 32)
+    var nextKey = 0
+
+    for cycle in 0 ..< 64 {
+      while sharded.count < 32 {
+        sharded.insert(nextKey, for: nextKey, cost: 1)
+        classic.insert(nextKey, for: nextKey, cost: 1)
+        nextKey += 1
+      }
+
+      let liveRange = max(0, nextKey - 96) ..< nextKey
+      for key in liveRange {
+        let shardedValue = sharded.value(for: key)
+        let classicValue = classic.value(for: key)
+        #expect(shardedValue == classicValue)
+      }
+
+      let incoming = nextKey
+      sharded.insert(cycle, for: incoming, cost: 1)
+      classic.insert(cycle, for: incoming, cost: 1)
+      nextKey += 1
+
+      #expect(sharded.currentCost == classic.currentCost)
+      #expect(sharded.count == classic.count)
+      for key in max(0, nextKey - 96) ..< nextKey {
+        #expect(sharded.value(for: key) == classic.value(for: key))
+      }
+    }
   }
 }
 
