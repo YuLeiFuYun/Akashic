@@ -48,8 +48,13 @@ replacement variants. These remain process-visible recovery claims, not
 power-loss proofs.
 
 The seam does not replace ownership/mode validation, metadata writes or
-security checks. Injected `open(2)` errors prove local control-flow semantics,
-not real ACL, different-owner or mounted-filesystem behavior.
+security checks. A separate non-root macOS witness removes owner write permission
+from the real parent directory and observes the production temporary-file
+`open(O_CREAT|O_EXCL)` fail with `EACCES`/`EPERM` before mutation; the old
+destination remains byte-identical and no durable temporary file appears. That
+closes only this real parent-mode create/open denial. Injected `open(2)` cases
+still do not prove ACL, different-owner, directory-open, or mounted-filesystem
+behavior.
 
 ## 2. Permission transition
 

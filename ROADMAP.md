@@ -13,7 +13,7 @@ Akashic is an actively developed pre-1.0 cache and durable blob-store package. T
 ## Active priorities
 
 1. Replace full-manifest rewrites with a design that reduces small-object write amplification without weakening recovery or schema guarantees.
-2. Extend filesystem evidence to real `open`, ACL, owner, directory-`fsync`, rename, and close failures.
+2. Extend filesystem evidence beyond the qualified parent-mode temporary-file create/open denial to ACL, different-owner/directory-open, directory-`fsync`, rename, and close failures.
 3. Add long-duration kill-at-random and independent physical power-loss qualification.
 4. Measure physical I/O, metadata write amplification, RSS, file descriptors, reopen latency, and energy on stable macOS and iOS devices.
 5. Specify multi-process reader snapshot and lease semantics before exposing them.
