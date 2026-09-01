@@ -146,6 +146,34 @@ struct DurableFileWriterFaultTests {
         }
     }
 
+    @Test(
+        "Real parent permission denial fails temporary open before mutation",
+        .enabled(if: Darwin.geteuid() != 0)
+    )
+    func realTemporaryOpenPermissionDenialPreservesOldDestination() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("state.bin")
+            let old = Data("old-before-real-open-denial".utf8)
+            let replacement = Data(repeating: 0x5b, count: 4_096)
+            try old.write(to: destination)
+
+            guard Darwin.chmod(root.path, mode_t(0o500)) == 0 else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+            defer { _ = Darwin.chmod(root.path, mode_t(0o700)) }
+
+            do {
+                try DurableFileWriter.writeReplacing(replacement, to: destination)
+                Issue.record("Expected real temporary-file open denial")
+            } catch let error as POSIXError {
+                #expect(error.code == .EACCES || error.code == .EPERM)
+            }
+
+            #expect(try Data(contentsOf: destination) == old)
+            #expect(durableTemporaryFiles(in: root).isEmpty)
+        }
+    }
+
     @Test("ENOSPC after a partial write preserves the old destination")
     func noSpaceAfterPartialWritePreservesOldDestination() throws {
         try withTemporaryDirectory { root in

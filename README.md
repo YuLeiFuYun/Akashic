@@ -86,8 +86,8 @@ let restored = try await disk.read(digest: digest, partition: partition)
 
 当前本地证据包括：
 
-- 当前本地全仓测试面为 154 项 Swift Testing：Core 16、Memory 25、Disk 113；最终 source-frozen 综合 gate 仍以首尾 source identity 一致为准；
-- 11 项 `open/write/fsync/close/rename` durable-writer syscall 行为测试、1 项真实权限迁移、3 项真实挂载 APFS 满卷恢复和 3 项真实 APFS quota 恢复案例；
+- 当前本地全仓测试面为 250 项 Swift Testing：Core 18、Memory 65、Disk 167；最终 source-frozen 综合 gate 仍以首尾 source identity 一致为准；
+- 12 项 durable-writer 行为测试（其中父目录 `0500` 的临时文件 create/open denial 使用真实 Darwin 系统调用）、1 项真实权限迁移、3 项真实挂载 APFS 满卷恢复和 3 项真实 APFS quota 恢复案例；
 - 显式 stage/publish 与 schema3 fast-xattr 各11个精确子进程 crash switch points；package-internal schema4 normal single-key 另有4-point matrix，distinct-key full checkpoint另有7-point matrix，并保留 recovery-of-recovery 的0→1→2 head中断恢复；此外还有3轮共78个固定种子的随机 `SIGKILL` 案例；
 - 12 个并发进程竞争同一 store generation，必须收敛到唯一 generation ID；
 - 6 个 Release 平台案例：Disk/Memory × macOS 12、iOS 15 Simulator、iOS 15 device；
@@ -128,7 +128,7 @@ scripts/verify-platform-matrix.sh AkashicDisk ios-device
 
 ## 未完成
 
-- 真实 `open`、ACL、owner 迁移，以及由真实文件系统触发的 `fsync`/rename/close 错误；
+- ACL、owner 迁移、directory-open，以及由真实文件系统触发的 `fsync`/rename/close 错误；父目录 `0500` 导致生产临时文件 create/open 真实返回 `EACCES`/`EPERM` 的窄门已覆盖；
 - 目标设备 RSS、FD、I/O bytes、metadata write amplification、reopen latency 和 energy；
 - 真正的断电、`F_FULLFSYNC` 对照和数小时级高迭代 kill-at-random 实验；
 - 多进程 reader snapshot/lease；
