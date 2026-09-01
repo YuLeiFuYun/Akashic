@@ -61,6 +61,37 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
   }
 
   public func insert(_ value: Value, for key: Key, cost: Int) {
+    var ignoredVictims: [MemoryCacheEvictionVictim<Key>]? = nil
+    insert(
+      value,
+      for: key,
+      cost: cost,
+      evictedVictims: &ignoredVictims
+    )
+  }
+
+  /// 插入值并返回本次因成本准入真实离开缓存的身份。
+  ///
+  /// 普通 replacement 不会把同一 key 计为 eviction；超过全局成本上限的新值若替换
+  /// 既有 key，则该旧 resident 会出现在回执中。该方法只为需要同步外部轻量索引的
+  /// 宿主承担 victim 数组成本，常规 `insert` 保持无回执分配路径。
+  @discardableResult
+  public func insertReportingEvictions(
+    _ value: Value,
+    for key: Key,
+    cost: Int
+  ) -> MemoryCacheEvictionReport<Key> {
+    var victims: [MemoryCacheEvictionVictim<Key>]? = []
+    insert(value, for: key, cost: cost, evictedVictims: &victims)
+    return evictionReport(from: victims ?? [])
+  }
+
+  private func insert(
+    _ value: Value,
+    for key: Key,
+    cost: Int,
+    evictedVictims: inout [MemoryCacheEvictionVictim<Key>]?
+  ) {
     let normalized = max(1, cost)
     let rawHash = key.hashValue
     let index = shardIndex(rawHash: rawHash)
@@ -83,7 +114,8 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
         value,
         for: key,
         rawHash: rawHash,
-        normalizedCost: normalized
+        normalizedCost: normalized,
+        evictedVictims: &evictedVictims
       )
       let released = shard.normalizeCostLimitToResidentsLocked()
       returnGlobalBudget(released)
@@ -101,7 +133,8 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
       for: key,
       rawHash: rawHash,
       shardIndex: index,
-      normalizedCost: normalized
+      normalizedCost: normalized,
+      evictedVictims: &evictedVictims
     )
   }
 
@@ -111,6 +144,27 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
   /// 对象，同时每个 shard 内仍严格服从自己的 SIEVE 顺序。结束后重新建立
   /// “各 shard limit = resident cost + 全局未分配池”的不变量。
   public func updateCostLimit(_ newLimit: Int) -> MemoryCacheRemovalSummary {
+    var ignoredVictims: [MemoryCacheEvictionVictim<Key>]? = nil
+    return updateCostLimit(newLimit, evictedVictims: &ignoredVictims)
+  }
+
+  /// 更新全局成本上限并返回 shrink 实际删除的身份与释放摘要。
+  /// 扩容或等值更新返回空 `evictedKeys` 与零摘要。
+  public func updateCostLimitReportingEvictions(
+    _ newLimit: Int
+  ) -> MemoryCacheEvictionReport<Key> {
+    var victims: [MemoryCacheEvictionVictim<Key>]? = []
+    let summary = updateCostLimit(newLimit, evictedVictims: &victims)
+    let records = victims ?? []
+    let report = evictionReport(from: records)
+    precondition(report.summary == summary)
+    return report
+  }
+
+  private func updateCostLimit(
+    _ newLimit: Int,
+    evictedVictims: inout [MemoryCacheEvictionVictim<Key>]?
+  ) -> MemoryCacheRemovalSummary {
     withAllShardsLocked {
       let normalized = max(1, newLimit)
       totalCostLimit = normalized
@@ -129,17 +183,20 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
         var successorVictimCosts: [Int]?
         while remainingDeficit > 0 {
           guard
-            let index = bestFitVictimShardIndexLocked(
+            let index = ShardedMemoryVictimSelector.bestFitShardIndexLocked(
+              shards: shards,
               remainingDeficit: remainingDeficit,
               excluding: nil,
               startIndex: 0,
               nextVictimCosts: nextVictimCosts,
               successorVictimCosts: &successorVictimCosts
             ),
-            let released = shards[index].removeNextVictimLocked()
+            let victim = shards[index].removeNextVictimRecordLocked()
           else {
             preconditionFailure("global cache resize deficit must be satisfiable")
           }
+          evictedVictims?.append(victim)
+          let released = victim.cost
           items += 1
           cost += released
           remainingDeficit = max(0, remainingDeficit - released)
@@ -238,11 +295,16 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
     for key: Key,
     rawHash: Int,
     shardIndex targetIndex: Int,
-    normalizedCost: Int
+    normalizedCost: Int,
+    evictedVictims: inout [MemoryCacheEvictionVictim<Key>]?
   ) {
     withAllShardsLocked {
       guard normalizedCost <= totalCostLimit else {
         // 与单分片 MemoryCache 相同：过大全量替换会移除旧键并留下 miss。
+        let replacedCost = shards[targetIndex].costLocked(for: key, rawHash: rawHash)
+        if replacedCost > 0 {
+          evictedVictims?.append(MemoryCacheEvictionVictim(key: key, cost: replacedCost))
+        }
         shards[targetIndex].removeLocked(key, rawHash: rawHash)
         canonicalizeBudgetLocked()
         return
@@ -287,17 +349,20 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
         var successorVictimCosts: [Int]?
         while remainingDeficit > 0 {
           guard
-            let donorIndex = bestFitVictimShardIndexLocked(
+            let donorIndex = ShardedMemoryVictimSelector.bestFitShardIndexLocked(
+              shards: shards,
               remainingDeficit: remainingDeficit,
               excluding: targetIndex,
               startIndex: donorStartIndex,
               nextVictimCosts: nextVictimCosts,
               successorVictimCosts: &successorVictimCosts
             ),
-            let released = shards[donorIndex].removeNextVictimLocked()
+            let victim = shards[donorIndex].removeNextVictimRecordLocked()
           else {
             preconditionFailure("global cache deficit must be satisfiable")
           }
+          evictedVictims?.append(victim)
+          let released = victim.cost
           remainingDeficit = max(0, remainingDeficit - released)
           nextVictimCosts[donorIndex] = shards[donorIndex].nextVictimCostLocked()
           successorVictimCosts?[donorIndex] = -1
@@ -314,102 +379,29 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
         value,
         for: key,
         rawHash: rawHash,
-        normalizedCost: normalizedCost
+        normalizedCost: normalizedCost,
+        evictedVictims: &evictedVictims
       )
       canonicalizeBudgetLocked()
     }
   }
 
-  /// Selects the best immediate globally legal victim while preserving each shard's local SIEVE
-  /// order. Different immediate victim costs still use the original greedy best-fit rule. Successor
-  /// state is queried only when that rule leaves a real equal-cost tie and the first victim cannot
-  /// satisfy the deficit. A tied shard whose legal successor exactly equals the post-first-step
-  /// deficit is provably non-regressing: two removals then release exactly the original deficit.
-  @inline(__always)
-  private func bestFitVictimShardIndexLocked(
-    remainingDeficit: Int,
-    excluding excludedIndex: Int?,
-    startIndex: Int,
-    nextVictimCosts: [Int?],
-    successorVictimCosts: inout [Int]?
-  ) -> Int? {
-    precondition(remainingDeficit > 0)
-    precondition(shards.indices.contains(startIndex))
-    precondition(nextVictimCosts.count == shards.count)
-    precondition(successorVictimCosts == nil || successorVictimCosts?.count == shards.count)
-    var bestUnderIndex: Int?
-    var bestUnderCost = 0
-    var bestUnderTieCount = 0
-    var bestOverIndex: Int?
-    var bestOverCost = Int.max
-
-    for offset in 0 ..< shards.count {
-      let index = (startIndex + offset) % shards.count
-      if index == excludedIndex { continue }
-      guard let victimCost = nextVictimCosts[index] else { continue }
-      if victimCost == remainingDeficit {
-        // First exact victim in caller-relative ring order is already globally optimal; no later
-        // candidate or successor forecast can improve zero overshoot.
-        return index
-      }
-      if victimCost < remainingDeficit {
-        if victimCost > bestUnderCost {
-          bestUnderCost = victimCost
-          bestUnderIndex = index
-          bestUnderTieCount = 1
-        } else if victimCost == bestUnderCost {
-          bestUnderTieCount += 1
-        }
-      } else if victimCost < bestOverCost {
-        bestOverCost = victimCost
-        bestOverIndex = index
-      }
+  private func evictionReport(
+    from victims: [MemoryCacheEvictionVictim<Key>]
+  ) -> MemoryCacheEvictionReport<Key> {
+    var releasedCost = 0
+    for victim in victims {
+      let addition = releasedCost.addingReportingOverflow(victim.cost)
+      precondition(!addition.overflow)
+      releasedCost = addition.partialValue
     }
-
-    guard let greedyUnderIndex = bestUnderIndex else { return bestOverIndex }
-    guard bestUnderTieCount > 1 else { return greedyUnderIndex }
-    return exactSuccessorTieIndexLocked(
-      remainingDeficit: remainingDeficit,
-      bestUnderCost: bestUnderCost,
-      excluding: excludedIndex,
-      startIndex: startIndex,
-      nextVictimCosts: nextVictimCosts,
-      successorVictimCosts: &successorVictimCosts
-    ) ?? greedyUnderIndex
-  }
-
-  /// Cold path for the only cross-shard look-ahead Akashic retains. Keeping the second SIEVE scan
-  /// out of the inlined immediate selector prevents a rare tie optimization from inflating the
-  /// ordinary all-shard slow-path code footprint.
-  @inline(never)
-  private func exactSuccessorTieIndexLocked(
-    remainingDeficit: Int,
-    bestUnderCost: Int,
-    excluding excludedIndex: Int?,
-    startIndex: Int,
-    nextVictimCosts: [Int?],
-    successorVictimCosts: inout [Int]?
-  ) -> Int? {
-    let exactSuccessorCost = remainingDeficit - bestUnderCost
-    precondition(exactSuccessorCost > 0)
-    if successorVictimCosts == nil {
-      successorVictimCosts = [Int](repeating: -1, count: shards.count)
-    }
-    for offset in 0 ..< shards.count {
-      let index = (startIndex + offset) % shards.count
-      if index == excludedIndex || nextVictimCosts[index] != bestUnderCost { continue }
-      var successorCost = successorVictimCosts![index]
-      if successorCost < 0 {
-        let forecast = shards[index].nextTwoVictimCostsLocked()
-        precondition(forecast?.first == nextVictimCosts[index])
-        successorCost = forecast?.second ?? 0
-        successorVictimCosts![index] = successorCost
-      }
-      if successorCost == exactSuccessorCost {
-        return index
-      }
-    }
-    return nil
+    return MemoryCacheEvictionReport(
+      evictedKeys: victims.map(\.key),
+      summary: MemoryCacheRemovalSummary(
+        itemCount: victims.count,
+        costBytes: releasedCost
+      )
+    )
   }
 
   @inline(__always)

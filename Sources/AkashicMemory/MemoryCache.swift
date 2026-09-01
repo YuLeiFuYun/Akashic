@@ -71,6 +71,24 @@ public struct MemoryCacheRemovalSummary: Hashable, Sendable {
     }
 }
 
+/// 一次缓存变更实际删除的身份与对应释放摘要。
+///
+/// `evictedKeys` 只包含操作结束后已不再驻留的 key；同 key 的普通 replacement 不会
+/// 被误报为 eviction。该结果用于上层维护与真实缓存 residency 同步的轻量索引，而不
+/// 暴露 SIEVE hand、visited bit 或分片实现细节。
+public struct MemoryCacheEvictionReport<Key: Sendable>: Sendable {
+    /// 按真实删除顺序记录的缓存身份。
+    public let evictedKeys: [Key]
+    /// 与 `evictedKeys` 对应的条目数和归一化成本汇总。
+    public let summary: MemoryCacheRemovalSummary
+
+    /// 创建一次已完成缓存变更的精确 eviction 回执。
+    public init(evictedKeys: [Key], summary: MemoryCacheRemovalSummary) {
+        self.evictedKeys = evictedKeys
+        self.summary = summary
+    }
+}
+
 /// 进程内、按成本设限的 SIEVE 缓存；不感知所存值所属的业务领域。
 ///
 /// 命中只设置单比特访问标记，淘汰时再执行惰性提升。与逐命中改链表的 LRU 相比，

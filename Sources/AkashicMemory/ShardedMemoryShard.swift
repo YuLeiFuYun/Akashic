@@ -223,10 +223,15 @@ final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unch
   /// Removes exactly one shard-local SIEVE victim and returns its normalized cost.
   @discardableResult
   func removeNextVictimLocked() -> Int? {
+    removeNextVictimRecordLocked()?.cost
+  }
+
+  /// Reporting variant used only by callers that must mirror exact residency identities.
+  func removeNextVictimRecordLocked() -> MemoryCacheEvictionVictim<Key>? {
     guard let victim = nextVictim() else { return nil }
-    let cost = victim.cost
+    let record = MemoryCacheEvictionVictim(key: victim.key, cost: victim.cost)
     removeNode(victim)
-    return cost
+    return record
   }
 
   func insertLocked(
@@ -234,6 +239,23 @@ final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unch
     for key: Key,
     rawHash: Int,
     normalizedCost: Int
+  ) {
+    var ignoredVictims: [MemoryCacheEvictionVictim<Key>]? = nil
+    insertLocked(
+      value,
+      for: key,
+      rawHash: rawHash,
+      normalizedCost: normalizedCost,
+      evictedVictims: &ignoredVictims
+    )
+  }
+
+  func insertLocked(
+    _ value: Value,
+    for key: Key,
+    rawHash: Int,
+    normalizedCost: Int,
+    evictedVictims: inout [MemoryCacheEvictionVictim<Key>]?
   ) {
     precondition(normalizedCost > 0 && normalizedCost <= costLimit)
     let reusable = node(for: key, rawHash: rawHash)
@@ -245,6 +267,7 @@ final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unch
     // 反复分配/释放 Node；额外 victim 仍按经典 SIEVE 删除。
     var recycled: Node?
     while totalCost > costLimit - normalizedCost, let victim = nextVictim() {
+      evictedVictims?.append(MemoryCacheEvictionVictim(key: victim.key, cost: victim.cost))
       detach(victim)
       removeFromBucket(victim)
       if recycled == nil {

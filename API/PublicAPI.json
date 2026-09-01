@@ -915,6 +915,16 @@
         },
         {
           "kind": "conformsTo",
+          "source": "MemoryCacheEvictionReport",
+          "target": "Swift.Sendable"
+        },
+        {
+          "kind": "conformsTo",
+          "source": "MemoryCacheEvictionReport",
+          "target": "Swift.SendableMetatype"
+        },
+        {
+          "kind": "conformsTo",
           "source": "MemoryCacheRemovalSummary",
           "target": "Swift.Equatable"
         },
@@ -944,7 +954,7 @@
           "target": "Swift.SendableMetatype"
         }
       ],
-      "symbolCount": 27,
+      "symbolCount": 33,
       "symbols": [
         {
           "declaration": "final class MemoryCache<Key, Value> where Key : Hashable, Key : Sendable, Value : Sendable",
@@ -1013,6 +1023,30 @@
           "preciseIdentifier": "s:13AkashicMemory0B5CacheC5value3forq_Sgx_tF"
         },
         {
+          "declaration": "struct MemoryCacheEvictionReport<Key> where Key : Sendable",
+          "kind": "swift.struct",
+          "path": "MemoryCacheEvictionReport",
+          "preciseIdentifier": "s:13AkashicMemory0B19CacheEvictionReportV"
+        },
+        {
+          "declaration": "let evictedKeys: [Key]",
+          "kind": "swift.property",
+          "path": "MemoryCacheEvictionReport.evictedKeys",
+          "preciseIdentifier": "s:13AkashicMemory0B19CacheEvictionReportV11evictedKeysSayxGvp"
+        },
+        {
+          "declaration": "init(evictedKeys: [Key], summary: MemoryCacheRemovalSummary)",
+          "kind": "swift.init",
+          "path": "MemoryCacheEvictionReport.init(evictedKeys:summary:)",
+          "preciseIdentifier": "s:13AkashicMemory0B19CacheEvictionReportV11evictedKeys7summaryACyxGSayxG_AA0bC14RemovalSummaryVtcfc"
+        },
+        {
+          "declaration": "let summary: MemoryCacheRemovalSummary",
+          "kind": "swift.property",
+          "path": "MemoryCacheEvictionReport.summary",
+          "preciseIdentifier": "s:13AkashicMemory0B19CacheEvictionReportV7summaryAA0bC14RemovalSummaryVvp"
+        },
+        {
           "declaration": "struct MemoryCacheRemovalSummary",
           "kind": "swift.struct",
           "path": "MemoryCacheRemovalSummary",
@@ -1073,6 +1107,12 @@
           "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC6insert_3for4costyq__xSitF"
         },
         {
+          "declaration": "@discardableResult func insertReportingEvictions(_ value: Value, for key: Key, cost: Int) -> MemoryCacheEvictionReport<Key>",
+          "kind": "swift.method",
+          "path": "ShardedMemoryCache.insertReportingEvictions(_:for:cost:)",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC24insertReportingEvictions_3for4costAA0bD14EvictionReportVyxGq__xSitF"
+        },
+        {
           "declaration": "func remove(_ key: Key)",
           "kind": "swift.method",
           "path": "ShardedMemoryCache.remove(_:)",
@@ -1101,6 +1141,12 @@
           "kind": "swift.method",
           "path": "ShardedMemoryCache.updateCostLimit(_:)",
           "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC15updateCostLimityAA0bD14RemovalSummaryVSiF"
+        },
+        {
+          "declaration": "func updateCostLimitReportingEvictions(_ newLimit: Int) -> MemoryCacheEvictionReport<Key>",
+          "kind": "swift.method",
+          "path": "ShardedMemoryCache.updateCostLimitReportingEvictions(_:)",
+          "preciseIdentifier": "s:13AkashicMemory07ShardedB5CacheC33updateCostLimitReportingEvictionsyAA0bD14EvictionReportVyxGSiF"
         },
         {
           "declaration": "func value(for key: Key) -> Value?",
