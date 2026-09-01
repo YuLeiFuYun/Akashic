@@ -23,6 +23,22 @@ struct AkashicConsumerSmoke {
         cache.insert(payload, for: digest, cost: payload.count)
         precondition(cache.value(for: digest) == payload)
 
+        let reportingCache = ShardedMemoryCache<Int, Data>(
+            costLimit: payload.count,
+            shardCount: 1
+        )
+        reportingCache.insert(payload, for: 1, cost: payload.count)
+        let eviction = reportingCache.insertReportingEvictions(
+            payload,
+            for: 2,
+            cost: payload.count
+        )
+        precondition(eviction.evictedKeys == [1])
+        precondition(eviction.summary.itemCount == 1)
+        precondition(eviction.summary.costBytes == payload.count)
+        precondition(reportingCache.value(for: 1) == nil)
+        precondition(reportingCache.value(for: 2) == payload)
+
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "akashic-consumer-\(UUID().uuidString.lowercased())",
             isDirectory: true

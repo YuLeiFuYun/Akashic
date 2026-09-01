@@ -3,6 +3,63 @@ import Testing
 
 @Suite("AkashicMemory sharded SIEVE cache")
 struct ShardedMemoryCacheTests {
+  @Test("Reporting insert returns exact local and cross-shard SIEVE victims")
+  func reportingInsertReturnsExactVictims() {
+    let local = ShardedMemoryCache<Int, Int>(costLimit: 3, shardCount: 1)
+    local.insert(0, for: 0, cost: 1)
+    local.insert(1, for: 1, cost: 1)
+    local.insert(2, for: 2, cost: 1)
+
+    let localReport = local.insertReportingEvictions(3, for: 3, cost: 1)
+    #expect(localReport.evictedKeys == [0])
+    #expect(localReport.summary == MemoryCacheRemovalSummary(itemCount: 1, costBytes: 1))
+    #expect(local.value(for: 0) == nil)
+    #expect(local.value(for: 3) == 3)
+
+    let crossShard = ShardedMemoryCache<RoutedKey, Int>(costLimit: 102, shardCount: 3)
+    let large = RoutedKey(identity: 10, routeHash: 1)
+    let small = RoutedKey(identity: 11, routeHash: 2)
+    let incoming = RoutedKey(identity: 12, routeHash: 0)
+    crossShard.insert(10, for: large, cost: 100)
+    crossShard.insert(11, for: small, cost: 1)
+
+    let crossReport = crossShard.insertReportingEvictions(12, for: incoming, cost: 2)
+    #expect(crossReport.evictedKeys == [small])
+    #expect(crossReport.summary == MemoryCacheRemovalSummary(itemCount: 1, costBytes: 1))
+    #expect(crossShard.value(for: large) == 10)
+    #expect(crossShard.value(for: small) == nil)
+    #expect(crossShard.value(for: incoming) == 12)
+  }
+
+  @Test("Reporting shrink and oversized replacement return only identities that leave residency")
+  func reportingShrinkAndOversizedReplacementReturnExactVictims() {
+    let cache = ShardedMemoryCache<RoutedKey, Int>(costLimit: 102, shardCount: 2)
+    let smallA = RoutedKey(identity: 20, routeHash: 0)
+    let smallB = RoutedKey(identity: 21, routeHash: 0)
+    let large = RoutedKey(identity: 22, routeHash: 1)
+    cache.insert(20, for: smallA, cost: 1)
+    cache.insert(21, for: smallB, cost: 1)
+    cache.insert(22, for: large, cost: 100)
+
+    let shrink = cache.updateCostLimitReportingEvictions(101)
+    #expect(shrink.evictedKeys.count == 1)
+    #expect(Set(shrink.evictedKeys).isSubset(of: [smallA, smallB]))
+    #expect(shrink.summary == MemoryCacheRemovalSummary(itemCount: 1, costBytes: 1))
+    #expect(cache.value(for: large) == 22)
+
+    let survivor = shrink.evictedKeys[0] == smallA ? smallB : smallA
+    let replacement = cache.insertReportingEvictions(23, for: survivor, cost: 1)
+    #expect(replacement.evictedKeys.isEmpty)
+    #expect(replacement.summary == MemoryCacheRemovalSummary(itemCount: 0, costBytes: 0))
+    #expect(cache.value(for: survivor) == 23)
+
+    let tooLarge = cache.insertReportingEvictions(24, for: survivor, cost: 102)
+    #expect(tooLarge.evictedKeys == [survivor])
+    #expect(tooLarge.summary.itemCount == 1)
+    #expect(tooLarge.summary.costBytes == 1)
+    #expect(cache.value(for: survivor) == nil)
+  }
+
   @Test("AKASHIC-CT-035 shard budgets sum to exact global bound")
   func exactGlobalBound() async {
     let cache = ShardedMemoryCache<Int, Int>(costLimit: 257, shardCount: 8)
