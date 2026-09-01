@@ -14,7 +14,7 @@ Akashic 是面向 Swift/Apple 平台的技术中立缓存与 durable blob store�
 ## 产品
 
 - `AkashicCore`：`BlobDigest`、`CachePartitionID`、`PhysicalBlobID`、`StoreGenerationID`、stage/publication、维护上限与通用协议；
-- `AkashicMemory`：同步、线程安全、按成本设限的单锁 SIEVE 参考缓存，以及可配置分片数的 SIEVE 候选；当前 Fovea V4 测量配置使用 8 分片；16/32 分片因 fresh-key 热集保留失败被拒绝，8 分片在 20-process scope-all 正式 campaign 中通过全部 13 个适用支配比较；公开 revision、Fovea 精确 pin 与 trusted CI 仍待完成；
+- `AkashicMemory`：同步、线程安全、按成本设限的单锁 SIEVE 参考缓存，以及默认 8 分片的 `ShardedMemoryCache`；历史 Cache Lab V4 的 20-process、13/13 正式结果绑定 `0.1.0-alpha.5` 的旧静态分片预算实现，不能重绑定到当前实现。动态未分配预算实现已随 `0.1.0-alpha.6`（`2846d4715cc5917711ffa2f100ee310c2290de40`）发布并被 Fovea 精确 pin，组件 `core` CI 已通过；当前实现仍缺少重新治理的 20-block 性能资格与稳定真机证据；
 - `AkashicDisk`：partition 隔离、stage/publish/discard、单 writer、generation、损坏隔离、文件系统防御与有界恢复；
 - `AkashicCrashProbe`：仅用于独立进程崩溃验证，不属于库 API；
 - `AkashicResourceProbe`：仅用于本地资源包络采样，不属于库 API。

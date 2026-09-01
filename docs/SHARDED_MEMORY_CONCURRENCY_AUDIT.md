@@ -135,20 +135,23 @@ to the historical Cache Lab V4 formal campaign. That campaign used the previous 
 budget implementation and passed all thirteen applicable dominance comparisons in twenty clean
 process blocks; it must not be silently rebound to this working tree.
 
-For the current dynamic-unassigned-budget candidate, Fovea Cache Lab was temporarily placed in
-SwiftPM edited-dependency mode against the local Akashic working tree. A five-block memory
-calibration reported zero Fovea correctness failures, zero inferior endpoints, zero inconclusive
-endpoints and zero dominance failures. The post-refactor five-block rerun against the verified source
-reported directional median ratios versus LRUCache of approximately 1.298x hot-scan throughput,
-1.624x lower hot-scan p99 latency, 3.257x concurrent throughput and 2.583x lower concurrent p99
-latency. These runs are mechanism evidence only: the dependency is unpublished,
-the host run is not a replacement for the governed twenty-block campaign, and no release/formal
-claim is authorized from them.
+For the dynamic-unassigned-budget implementation now published as `0.1.0-alpha.6`
+(`2846d4715cc5917711ffa2f100ee310c2290de40`), Fovea Cache Lab was first placed in SwiftPM
+edited-dependency mode against the local Akashic working tree. A five-block memory calibration
+reported zero Fovea correctness failures, zero inferior endpoints, zero inconclusive endpoints and
+zero dominance failures. The post-refactor five-block rerun against the verified source reported
+directional median ratios versus LRUCache of approximately 1.298x hot-scan throughput, 1.624x lower
+hot-scan p99 latency, 3.257x concurrent throughput and 2.583x lower concurrent p99 latency. Publication
+and downstream adoption do not upgrade these runs: they remain mechanism evidence only, are not a
+replacement for the governed twenty-block campaign, and authorize no current-implementation formal
+performance claim.
 
 ## Downstream adoption boundary
 
-Fovea's production package still pins the previously published Akashic revision. Local SwiftPM edit
-mode may be used to verify this candidate against Fovea before publication, but that does not change
-the production pin or establish release readiness. A new Akashic revision, source-bound Fovea
-requalification and governed performance evidence are required before the production dependency can
-move.
+Fovea's production package now pins `0.1.0-alpha.6` exactly at
+`2846d4715cc5917711ffa2f100ee310c2290de40`, and its rendered-memory path constructs
+`ShardedMemoryCache`; Akashic's protected `core` check is green for that revision. This closes the
+publication and exact-pin adoption steps that were open when the candidate was first audited. It does
+not close the separate evidence boundary: the historical twenty-block V4 result remains bound to
+`0.1.0-alpha.5`, while the current dynamic-budget implementation still requires a governed formal
+performance rerun plus stable-device resource evidence before a new ranking or stable-release claim.
