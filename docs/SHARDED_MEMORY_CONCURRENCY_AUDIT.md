@@ -123,7 +123,7 @@ reservation.
   and reference-model cases, 45 disk/generation/manifest cases, and 14 core identity/durable-syscall
   fault cases.
 - Full `scripts/verify.sh` must pass structure, warnings-as-errors Debug/Release, positive/negative
-  consumers, the 140-symbol public API baseline and two identical Git-free source-identity passes.
+  consumers, the 146-symbol public API baseline and two identical Git-free source-identity passes.
   The concrete identity is intentionally recorded outside this hashed source tree to avoid a
   self-referential documentation/hash cycle.
 - `AkashicMemory` builds for `arm64-apple-ios15.0` with the internal atomic target.
