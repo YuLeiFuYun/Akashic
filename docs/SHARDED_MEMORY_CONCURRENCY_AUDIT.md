@@ -135,9 +135,11 @@ to the historical Cache Lab V4 formal campaign. That campaign used the previous 
 budget implementation and passed all thirteen applicable dominance comparisons in twenty clean
 process blocks; it must not be silently rebound to this working tree.
 
-For the dynamic-unassigned-budget implementation now published as `0.1.0-alpha.6`
-(`2846d4715cc5917711ffa2f100ee310c2290de40`), Fovea Cache Lab was first placed in SwiftPM
-edited-dependency mode against the local Akashic working tree. A five-block memory calibration
+The dynamic-unassigned-budget implementation first shipped as `0.1.0-alpha.6`
+(`2846d4715cc5917711ffa2f100ee310c2290de40`). The current `0.1.0-alpha.7`
+(`0376b960ec8abe54f2d4a9d7d66e97f395215eaf`) preserves that budget model and adds exact
+eviction-reporting variants for hosts that must mirror resident identity. Fovea Cache Lab was first
+placed in SwiftPM edited-dependency mode against the local Akashic working tree. A five-block memory calibration
 reported zero Fovea correctness failures, zero inferior endpoints, zero inconclusive endpoints and
 zero dominance failures. The post-refactor five-block rerun against the verified source reported
 directional median ratios versus LRUCache of approximately 1.298x hot-scan throughput, 1.624x lower
@@ -148,10 +150,11 @@ performance claim.
 
 ## Downstream adoption boundary
 
-Fovea's production package now pins `0.1.0-alpha.6` exactly at
-`2846d4715cc5917711ffa2f100ee310c2290de40`, and its rendered-memory path constructs
-`ShardedMemoryCache`; Akashic's protected `core` check is green for that revision. This closes the
+Fovea `develop` now pins `0.1.0-alpha.7` exactly at
+`0376b960ec8abe54f2d4a9d7d66e97f395215eaf`, and its rendered-memory path constructs
+`ShardedMemoryCache` and consumes the exact eviction report to keep its host-side cardinality governor
+synchronized with byte-driven residency; Akashic's protected `core` check is green for that revision. This closes the
 publication and exact-pin adoption steps that were open when the candidate was first audited. It does
 not close the separate evidence boundary: the historical twenty-block V4 result remains bound to
-`0.1.0-alpha.5`, while the current dynamic-budget implementation still requires a governed formal
+`0.1.0-alpha.5`, while the current alpha.7 dynamic-budget implementation still requires a governed formal
 performance rerun plus stable-device resource evidence before a new ranking or stable-release claim.
