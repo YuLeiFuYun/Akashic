@@ -491,42 +491,42 @@ struct FileBlobStoreConcurrentReadTests {
       )
 
       func waitForPendingCount(_ expected: Int) async -> Bool {
-        for _ in 0..<2_000 {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(2))
+        while clock.now < deadline {
           if scheduler.resourceSnapshot().pendingCount == expected { return true }
           await Task.yield()
         }
-        return false
+        return scheduler.resourceSnapshot().pendingCount == expected
       }
 
       let first = Task {
         try await scheduler.readVerified(
           from: url, maximumBytes: data.count, expectedBytes: data.count, digest: digest)
       }
-      #expect(await recorder.waitForFirstEntry())
+      try #require(await recorder.waitForFirstEntry())
+      defer { recorder.releaseFirst() }
 
       let anchor = Task {
         try await scheduler.readVerified(
           from: url, maximumBytes: data.count, expectedBytes: data.count, digest: digest)
       }
-      #expect(await waitForPendingCount(1))
+      try #require(await waitForPendingCount(1))
 
+      var churnTasks: [Task<BoundedFileReadResult, Error>] = []
       for _ in 0..<128 {
         let churn = Task {
           try await scheduler.readVerified(
             from: url, maximumBytes: data.count, expectedBytes: data.count, digest: digest)
         }
-        #expect(await waitForPendingCount(2))
+        let reachedPendingTwo = await waitForPendingCount(2)
+        if !reachedPendingTwo { churn.cancel() }
+        try #require(reachedPendingTwo)
         var snapshot = scheduler.resourceSnapshot()
         #expect(snapshot.pendingStorageSlots <= snapshot.maximumPendingStorageSlots)
         churn.cancel()
-        do {
-          _ = try await churn.value
-          Issue.record("cancelled churn read unexpectedly completed")
-        } catch is CancellationError {
-        } catch {
-          Issue.record("cancelled churn read returned unexpected error: \(error)")
-        }
-        #expect(await waitForPendingCount(1))
+        try #require(await waitForPendingCount(1))
+        churnTasks.append(churn)
         snapshot = scheduler.resourceSnapshot()
         #expect(snapshot.pendingStorageSlots <= snapshot.maximumPendingStorageSlots)
       }
@@ -540,6 +540,15 @@ struct FileBlobStoreConcurrentReadTests {
       recorder.releaseFirst()
       #expect(try await first.value.data == data)
       #expect(try await anchor.value.data == data)
+      for churn in churnTasks {
+        do {
+          _ = try await churn.value
+          Issue.record("cancelled churn read unexpectedly completed")
+        } catch is CancellationError {
+        } catch {
+          Issue.record("cancelled churn read returned unexpected error: \(error)")
+        }
+      }
       #expect(recorder.callCount == 2)
     }
   }

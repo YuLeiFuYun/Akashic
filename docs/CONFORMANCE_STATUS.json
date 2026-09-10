@@ -29,7 +29,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-004",
       "status": "implemented-local",
@@ -37,7 +39,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-005",
       "status": "implemented-local",
@@ -45,7 +49,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-006",
       "status": "implemented-local",
@@ -53,7 +59,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-007",
       "status": "implemented-local",
@@ -61,7 +69,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-008",
       "status": "implemented-local",
@@ -69,7 +79,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-009",
       "status": "implemented-local",
@@ -78,7 +90,9 @@
     {
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
-        "Sources/AkashicDisk/FileBlobStoreIdentity.swift"
+        "Sources/AkashicDisk/FileBlobStoreIdentity.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-010",
       "status": "implemented-local",
@@ -116,7 +130,9 @@
       "evidencePaths": [
         "Sources/AkashicCore/BoundedDirectoryReader.swift",
         "Sources/AkashicDisk/FileBlobStoreMaintenance.swift",
+        "Tests/AkashicCoreTests/DurableFileWriterFaultTests.swift",
         "Tests/AkashicDiskTests/FileBlobStorePermissionTransitionTests.swift",
+        "Tools/Crash/verify_fault_injection_report.py",
         "Tools/Crash/verify_process_crash_matrix.py",
         "Tools/Crash/verify_random_kill_matrix.py",
         "Sources/AkashicCrashProbe/FullVolumeProbe.swift",
@@ -126,12 +142,14 @@
       ],
       "id": "AKASHIC-CT-013",
       "status": "implemented-local-process-crash",
-      "summary": "Exact and random process termination, a real permission transition, full mounted-APFS exhaustion and quota schema 2 remove unpublished blobs and durable temporary files on reopen while preserving published blobs and direct kernel ENOSPC."
+      "summary": "Exact and random process termination, real parent-mode and ACL permission transitions, full mounted-APFS exhaustion and quota schema 2 converge after authority restoration: reopen removes unpublished blobs and durable temporary files while preserving published blobs and direct kernel ENOSPC. ACL witnesses require exact pre/post ordered ACL-entry snapshot equality and unchanged POSIX mode; low-level ACL delete_child denial may strand its already-created temporary file while that denial remains active, so cleanup is not claimed before restoration."
     },
     {
       "evidencePaths": [
         "Tests/AkashicDiskTests/StoreGenerationTests.swift",
-        "Sources/AkashicDisk/StoreGenerationDirectory.swift"
+        "Sources/AkashicDisk/StoreGenerationDirectory.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-014",
       "status": "implemented-local",
@@ -148,13 +166,14 @@
     {
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Tests/AkashicCoreTests/DurableFileWriterFaultTests.swift",
         "Tests/AkashicDiskTests/FileBlobStorePermissionTransitionTests.swift",
         "Tests/AkashicCoreTests/StorageDirectorySecurityOwnershipTests.swift",
         "Sources/AkashicCore/StorageDirectorySecurity.swift"
       ],
       "id": "AKASHIC-CT-016",
       "status": "implemented-local",
-      "summary": "Symlink, hardlink, wrong file type, unsafe mode and live parent-directory permission transition tests pass; the owner-only fstat gate is exercised with a real different-owner regular descriptor, using a read-only root-owned system fixture for non-root runners and a temporary chowned fixture when the runner itself is root."
+      "summary": "Symlink, hardlink, wrong file type, unsafe mode, parent-mode transitions, and real macOS ACL add_file/delete_child denials pass without changing the tested directories' POSIX mode; ACL injection/restoration additionally requires exact ordered ACL-entry snapshot equality. The owner-only fstat gate is exercised with a real different-owner regular descriptor, using a read-only root-owned system fixture for non-root runners and a temporary chowned fixture when the runner itself is root."
     },
     {
       "evidencePaths": [
@@ -193,7 +212,9 @@
     {
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
-        "Sources/AkashicDisk/StoreWriterLease.swift"
+        "Sources/AkashicDisk/StoreWriterLease.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-020",
       "status": "implemented-local-cross-process-lock",

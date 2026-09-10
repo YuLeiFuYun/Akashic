@@ -17,6 +17,13 @@ private struct Schema5ReopenDepthSample: Codable {
     let exactState: Bool
 }
 
+private enum Schema5ReopenProfile: String {
+    case v1JSON = "v1-json"
+    case v2Binary = "v2-binary"
+    case v3CompactBinary = "v3-binary-compact"
+    case v4Compound = "v4-compound"
+}
+
 private struct Schema5ReopenDepthReport: Codable {
     struct Claims: Codable {
         let formalPerformance: Bool
@@ -26,6 +33,7 @@ private struct Schema5ReopenDepthReport: Codable {
     }
 
     let schemaVersion: Int
+    let profile: String
     let liveEntries: Int
     let recordsPerRun: Int
     let depths: [Int]
@@ -41,10 +49,7 @@ private struct Schema5ReopenDepthReport: Codable {
 
 extension SegmentedManifestShadowProbe {
     static func schema5ReopenDepth(arguments: [String]) throws {
-        guard arguments.count == 2, arguments[0] == "--root" else {
-            throw SegmentedManifestShadowError.invalidArguments
-        }
-        let root = URL(fileURLWithPath: arguments[1], isDirectory: true)
+        let (root, profile) = try schema5ReopenArguments(arguments)
         try? FileManager.default.removeItem(at: root)
         try StorageDirectorySecurity.prepareDirectory(root)
 
@@ -70,11 +75,12 @@ extension SegmentedManifestShadowProbe {
                 let segments = caseRoot.appendingPathComponent("segments", isDirectory: true)
                 try StorageDirectorySecurity.prepareDirectory(caseRoot)
                 try StorageDirectorySecurity.prepareDirectory(segments)
-                let base = try SegmentedManifestPrototypeV1.writeBaseJSON(
-                    baseSnapshot,
-                    entryCount: liveCount,
-                    fileName: "base-depth.json",
-                    directory: segments
+                let base = try schema5WriteDepthBase(
+                    profile: profile,
+                    initialState: initialState,
+                    baseSnapshot: baseSnapshot,
+                    liveCount: liveCount,
+                    segments: segments
                 )
 
                 var expected = initialState
@@ -97,7 +103,8 @@ extension SegmentedManifestShadowProbe {
                     runDescriptors.append(descriptor)
                     runBytes += descriptor.byteCount
                 }
-                let manifestRoot = try SegmentedManifestPrototypeV1.makeRoot(
+                let manifestRoot = try schema5MakeDepthRoot(
+                    profile: profile,
                     generation: UInt64(depth + 1),
                     base: base,
                     runs: runDescriptors
@@ -163,7 +170,8 @@ extension SegmentedManifestShadowProbe {
             controls.corruptRunRejected
         else { throw SegmentedManifestShadowError.invariantViolation }
         let report = Schema5ReopenDepthReport(
-            schemaVersion: 1,
+            schemaVersion: 2,
+            profile: profile.rawValue,
             liveEntries: liveCount,
             recordsPerRun: recordsPerRun,
             depths: depths,
@@ -185,6 +193,90 @@ extension SegmentedManifestShadowProbe {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         FileHandle.standardOutput.write(try encoder.encode(report))
         FileHandle.standardOutput.write(Data([0x0A]))
+    }
+
+
+    private static func schema5ReopenArguments(
+        _ arguments: [String]
+    ) throws -> (root: URL, profile: Schema5ReopenProfile) {
+        guard arguments.count == 2 || arguments.count == 4,
+            arguments[0] == "--root",
+            arguments[1].hasPrefix("/")
+        else { throw SegmentedManifestShadowError.invalidArguments }
+        let profile: Schema5ReopenProfile
+        if arguments.count == 2 {
+            profile = .v1JSON
+        } else {
+            guard arguments[2] == "--profile",
+                let parsed = Schema5ReopenProfile(rawValue: arguments[3])
+            else { throw SegmentedManifestShadowError.invalidArguments }
+            profile = parsed
+        }
+        return (URL(fileURLWithPath: arguments[1], isDirectory: true), profile)
+    }
+
+    private static func schema5WriteDepthBase(
+        profile: Schema5ReopenProfile,
+        initialState: [String: SegmentedManifestEntry],
+        baseSnapshot: Data,
+        liveCount: Int,
+        segments: URL
+    ) throws -> SegmentedManifestDescriptorV1 {
+        switch profile {
+        case .v1JSON:
+            return try SegmentedManifestPrototypeV1.writeBaseJSON(
+                baseSnapshot,
+                entryCount: liveCount,
+                fileName: "base-depth.json",
+                directory: segments
+            )
+        case .v2Binary:
+            return try SegmentedManifestPrototypeV1.writeBaseBinary(
+                initialState,
+                fileName: "base-binary-\(UUID().uuidString.lowercased()).akb",
+                directory: segments
+            )
+        case .v3CompactBinary, .v4Compound:
+            return try SegmentedManifestPrototypeV1.writeBaseBinaryV2(
+                initialState,
+                fileName: "base-binary-v2-\(UUID().uuidString.lowercased()).akb2",
+                directory: segments
+            )
+        }
+    }
+
+    private static func schema5MakeDepthRoot(
+        profile: Schema5ReopenProfile,
+        generation: UInt64,
+        base: SegmentedManifestDescriptorV1,
+        runs: [SegmentedManifestDescriptorV1]
+    ) throws -> SegmentedManifestRootV1 {
+        switch profile {
+        case .v1JSON:
+            return try SegmentedManifestPrototypeV1.makeRoot(
+                generation: generation,
+                base: base,
+                runs: runs
+            )
+        case .v2Binary:
+            return try SegmentedManifestPrototypeV1.makeRootV2(
+                generation: generation,
+                base: base,
+                runs: runs
+            )
+        case .v3CompactBinary:
+            return try SegmentedManifestPrototypeV1.makeRootV3(
+                generation: generation,
+                base: base,
+                runs: runs
+            )
+        case .v4Compound:
+            return try SegmentedManifestPrototypeV1.makeRootV4(
+                generation: generation,
+                base: base,
+                runs: runs
+            )
+        }
     }
 
     static func schema5DepthMutations(

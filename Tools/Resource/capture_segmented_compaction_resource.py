@@ -419,7 +419,7 @@ def cross_profile_comparisons(
                     "logicalAuthorityCommitmentExact": (
                         v1_baseline["child"]["actorLogicalAuthorityCommitment"]
                         == candidate_baseline["child"]["actorLogicalAuthorityCommitment"]
-                        == v1_compaction["child"]["actorLogicalAuthorityCommitment"]
+                        and v1_compaction["child"]["actorLogicalAuthorityCommitment"]
                         == candidate_compaction["child"]["actorLogicalAuthorityCommitment"]
                     ),
                     "v1FinalBaseBytes": v1_base,
@@ -512,8 +512,8 @@ def main() -> int:
         else []
     )
     result = {
-        "schemaVersion": 3,
-        "matrixID": "AKASHIC-SCHEMA5-COMPACTION-RESOURCE-MECHANISM-V3",
+        "schemaVersion": 4,
+        "matrixID": "AKASHIC-SCHEMA5-COMPACTION-RESOURCE-MECHANISM-V4",
         "status": "failed" if errors else "passed",
         "matrix": args.matrix,
         "repetitions": args.repetitions,

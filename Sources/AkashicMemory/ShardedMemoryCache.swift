@@ -61,11 +61,43 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
   }
 
   public func insert(_ value: Value, for key: Key, cost: Int) {
+    let normalized = max(1, cost)
+    let rawHash = key.hashValue
+    let index = shardIndex(rawHash: rawHash)
+    let shard = shards[index]
+
+    shard.acquire()
+    let assignedLimit = shard.costLimitLocked
+    let claimed = takeGlobalBudgetUpTo(normalized)
+    if claimed > 0 {
+      let expanded = assignedLimit.addingReportingOverflow(claimed)
+      precondition(!expanded.overflow)
+      shard.setCostLimitPreservingResidentsLocked(expanded.partialValue)
+    }
+
+    if normalized <= shard.costLimitLocked {
+      shard.insertLocked(
+        value,
+        for: key,
+        rawHash: rawHash,
+        normalizedCost: normalized
+      )
+      let released = shard.normalizeCostLimitToResidentsLocked()
+      returnGlobalBudget(released)
+      shard.release()
+      return
+    }
+
+    let released = shard.normalizeCostLimitToResidentsLocked()
+    returnGlobalBudget(released)
+    shard.release()
     var ignoredVictims: [MemoryCacheEvictionVictim<Key>]? = nil
-    insert(
+    insertWithRedistributedBudget(
       value,
       for: key,
-      cost: cost,
+      rawHash: rawHash,
+      shardIndex: index,
+      normalizedCost: normalized,
       evictedVictims: &ignoredVictims
     )
   }
@@ -384,24 +416,6 @@ public final class ShardedMemoryCache<Key: Hashable & Sendable, Value: Sendable>
       )
       canonicalizeBudgetLocked()
     }
-  }
-
-  private func evictionReport(
-    from victims: [MemoryCacheEvictionVictim<Key>]
-  ) -> MemoryCacheEvictionReport<Key> {
-    var releasedCost = 0
-    for victim in victims {
-      let addition = releasedCost.addingReportingOverflow(victim.cost)
-      precondition(!addition.overflow)
-      releasedCost = addition.partialValue
-    }
-    return MemoryCacheEvictionReport(
-      evictedKeys: victims.map(\.key),
-      summary: MemoryCacheRemovalSummary(
-        itemCount: victims.count,
-        costBytes: releasedCost
-      )
-    )
   }
 
   @inline(__always)
