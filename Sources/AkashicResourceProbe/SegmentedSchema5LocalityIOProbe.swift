@@ -127,6 +127,7 @@ private struct Schema5LocalityIOReport: Codable {
     }
 
     let schemaVersion: Int
+    let profile: String
     let seedEntryCount: Int
     let pairCountPerCase: Int
     let payloadBytesPerCommit: Int
@@ -144,7 +145,7 @@ enum SegmentedSchema5LocalityIOProbe {
     private static let workingSets = [1, 8, 32, 128, 256, 512]
 
     static func run(arguments: [String]) async throws {
-        let root = try parseRoot(arguments)
+        let (root, profile) = try parseArguments(arguments)
         try? FileManager.default.removeItem(at: root)
         try FileManager.default.createDirectory(
             at: root,
@@ -160,7 +161,8 @@ enum SegmentedSchema5LocalityIOProbe {
                 let row = try await runCase(
                     root: root.appendingPathComponent("ws-\(workingSet)", isDirectory: true),
                     identities: identities,
-                    workingSet: workingSet
+                    workingSet: workingSet,
+                    profile: profile
                 )
                 rows.append(row)
                 trace("case-complete ws=\(workingSet)")
@@ -193,7 +195,8 @@ enum SegmentedSchema5LocalityIOProbe {
         ]
 
         let report = Schema5LocalityIOReport(
-            schemaVersion: 2,
+            schemaVersion: 3,
+            profile: profile.rawValue,
             seedEntryCount: seedEntryCount,
             pairCountPerCase: pairCount,
             payloadBytesPerCommit: payloadBytes,
@@ -222,7 +225,8 @@ enum SegmentedSchema5LocalityIOProbe {
     private static func runCase(
         root: URL,
         identities: [Schema5LocalityIdentity],
-        workingSet: Int
+        workingSet: Int,
+        profile: Schema5LocalityProfile
     ) async throws -> Schema5LocalityIOCase {
         try? FileManager.default.removeItem(at: root)
         let limits = FileBlobStoreLimits(
@@ -240,15 +244,26 @@ enum SegmentedSchema5LocalityIOProbe {
         guard try await store!.migrateLegacyManifestToDirectoryHeadSchema4() else {
             throw ProbeError.resourceSampleFailed
         }
-        _ = try await store!.resourceProbeMigrateDirectoryHeadSchema4ToSegmentedV1()
-        trace("ws=\(workingSet) stage=seed-migrate-complete")
+        let migration = try await store!.resourceProbeMigrateDirectoryHeadSchema4ToSegmentedV1()
+        trace("ws=\(workingSet) stage=seed-migrate-complete profile=\(profile.rawValue)")
         let expected = await store!.resourceProbeManifestShadowSnapshot()
         guard expected.entries.count == seedEntryCount else { throw ProbeError.resourceSampleFailed }
         store = nil
+        try await transitionProfile(
+            profile,
+            root: root,
+            limits: limits,
+            migration: migration
+        )
 
         let counter = Schema5LocalityDirectoryHeadCounter()
         let operations = instrumentedDirectoryHeadOperations(counter: counter)
-        store = try await openWithOperations(root: root, limits: limits, operations: operations)
+        store = try await openProfile(
+            profile,
+            root: root,
+            limits: limits,
+            operations: operations
+        )
         trace("ws=\(workingSet) stage=instrumented-open-complete")
         let initialFootprint = try AkashicResourceProbe.measureFootprint(root: root)
         trace("ws=\(workingSet) stage=initial-footprint-complete")
@@ -311,8 +326,13 @@ enum SegmentedSchema5LocalityIOProbe {
         store = nil
         trace("ws=\(workingSet) stage=writer-reference-released")
 
-        store = try await FileBlobStore.open(root: root, limits: limits)
-        trace("ws=\(workingSet) stage=final-reopen-complete")
+        store = try await openProfile(
+            profile,
+            root: root,
+            limits: limits,
+            operations: .system
+        )
+        trace("ws=\(workingSet) stage=final-reopen-complete profile=\(profile.rawValue)")
         let reopened = await store!.resourceProbeManifestShadowSnapshot()
         let logicalReopenExact = logicalAuthorityEquivalent(expected, reopened)
         let physicalIDChangesAfterReopen = physicalIDChangeCount(expected, reopened)
@@ -413,27 +433,6 @@ enum SegmentedSchema5LocalityIOProbe {
         )
     }
 
-    private static func openWithOperations(
-        root: URL,
-        limits: FileBlobStoreLimits,
-        operations: FileBlobStoreDirectoryHeadOperations
-    ) async throws -> FileBlobStore {
-        for _ in 0..<250 {
-            do {
-                return try await FileBlobStore.open(
-                    root: root,
-                    limits: limits,
-                    faultInjector: { _ in },
-                    directoryHeadOperations: operations
-                )
-            } catch AkashicError.storageUnavailable {
-                await Task.yield()
-                try await Task.sleep(nanoseconds: 1_000_000)
-            }
-        }
-        throw ProbeError.resourceSampleFailed
-    }
-
     private static func makeIdentities(count: Int) throws -> [Schema5LocalityIdentity] {
         try (0..<count).map { index in
             let partition = try CachePartitionID.derive(
@@ -459,11 +458,4 @@ enum SegmentedSchema5LocalityIOProbe {
         FileHandle.standardError.write(Data("[schema5-locality] \(message)\n".utf8))
     }
 
-    private static func parseRoot(_ arguments: [String]) throws -> URL {
-        guard arguments.count == 2,
-            arguments[0] == "--root",
-            arguments[1].hasPrefix("/")
-        else { throw ProbeError.invalidArguments }
-        return URL(fileURLWithPath: arguments[1], isDirectory: true)
-    }
 }

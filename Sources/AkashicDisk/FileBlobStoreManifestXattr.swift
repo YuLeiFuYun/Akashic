@@ -161,7 +161,10 @@ extension FileBlobStore {
         guard staleBeforeGeneration > 1 else { return 0 }
         let descriptor = Darwin.open(url.path, O_RDWR | O_CLOEXEC | O_NOFOLLOW)
         guard descriptor >= 0 else { throw AkashicError.storageUnavailable }
-        defer { _ = Darwin.close(descriptor) }
+        var descriptorIsOpen = true
+        defer {
+            if descriptorIsOpen { _ = Darwin.close(descriptor) }
+        }
         _ = try StorageDirectorySecurity.validatedOpenedOwnedRegularFileStatus(descriptor)
 
         var removed = 0
@@ -203,10 +206,8 @@ extension FileBlobStore {
         }
 
         guard removed > 0 else { return 0 }
-        while Darwin.fsync(descriptor) != 0 {
-            if errno == EINTR { continue }
-            throw Self.currentManifestXattrPOSIXError()
-        }
+        descriptorIsOpen = false
+        try DurableFileDescriptorSynchronization.synchronizeAndClose(descriptor)
         return removed
     }
 

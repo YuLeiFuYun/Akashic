@@ -14,7 +14,9 @@ scripts/verify-source-boundary.sh
 scripts/verify-privacy-manifests.sh
 python3 Tools/Conformance/verify_status.py
 python3 Tools/Quality/verify_structure.py
+python3 Tools/Resource/test_capture_segmented_compaction_resource.py
 xcrun swift test -Xswiftc -warnings-as-errors
+scripts/verify-blob-store-conformance-kit.sh
 xcrun swift build -c release -Xswiftc -warnings-as-errors
 scripts/verify-consumer-package.sh
 scripts/verify-negative-consumer.sh

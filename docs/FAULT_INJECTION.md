@@ -9,7 +9,8 @@ process-termination test is never promoted into a physical power-loss claim.
 always binds it to Darwin `open(2)`, `write(2)`, `fsync(2)`, `close(2)` and
 same-directory `rename(2)`; external consumers cannot supply replacements.
 
-Eleven retained tests establish these local properties:
+The retained syscall suite contains sixteen tests. Twelve injected/deferred
+tests establish these local properties:
 
 1. repeated partial positive `write` returns are consumed until every byte is
    written;
@@ -30,7 +31,12 @@ Eleven retained tests establish these local properties:
    established;
 10. directory-`fsync` failure has the same visible-but-not-proven-durable
     boundary after rename;
-11. the package-only deferred-directory-sync variant still performs the full file
+11. after a successful parent-directory `fsync`, a failing directory `close` is
+    reported and is not retried on the same descriptor. The replacement is already
+    visible and the directory synchronization boundary completed before the close
+    error, so this is a conservative operation failure rather than evidence that the
+    directory `fsync` itself failed;
+12. the package-only deferred-directory-sync variant still performs the full file
     write/fsync/close/rename sequence but intentionally emits no parent-directory
     sync switch point, so only a surrounding same-directory transaction may use
     it and must establish that directory durability before returning success.
@@ -47,23 +53,59 @@ explicit sidecar, after-publication, full-checkpoint, tombstone and same-key
 replacement variants. These remain process-visible recovery claims, not
 power-loss proofs.
 
+Case 11 has a different durability boundary: the parent-directory `fsync` has
+already returned success before `close` reports `EIO`. The writer still returns
+that error and never retries `close` on the same descriptor; higher layers must
+reopen/replay authority rather than guessing whether the failed close left a live
+descriptor or whether their in-memory adoption completed. The same package-only
+`fsync`/single-close ownership primitive is now reused by directory-head publication,
+generation file/directory synchronization, legacy manifest-xattr cleanup and segmented
+manifest cleanup. Their focused state-machine suites cover the shared production call
+sites; the retained syscall count remains sixteen because only the DurableFileWriter
+suite is the precise injected syscall witness.
+
 The seam does not replace ownership/mode validation, metadata writes or
-security checks. A separate non-root macOS witness removes owner write permission
-from the real parent directory and observes the production temporary-file
-`open(O_CREAT|O_EXCL)` fail with `EACCES`/`EPERM` before mutation; the old
-destination remains byte-identical and no durable temporary file appears. That
-closes only this real parent-mode create/open denial. Injected `open(2)` cases
-still do not prove ACL, different-owner, directory-open, or mounted-filesystem
-behavior.
+security checks. Two separate non-root macOS witnesses exercise real parent-mode
+`open(2)` denial boundaries. The first removes owner write permission before the
+production temporary-file `open(O_CREAT|O_EXCL)`, which fails with
+`EACCES`/`EPERM` before mutation; the old destination remains byte-identical and
+no durable temporary file appears. The second removes parent-directory read
+permission from the rename observer after the replacement is already visible;
+the subsequent production `open(O_RDONLY)` for directory synchronization fails
+with `EACCES`/`EPERM`, while the replacement remains visible and durability is
+reported as ambiguous.
+
+Two additional non-root macOS witnesses exercise real ACL denial without changing
+the directory's POSIX mode. `deny add_file` is installed before the production
+temporary-file create/open and proves `EACCES`/`EPERM`, byte-identical old data and
+no temporary allocation. `deny delete_child` is installed only after the new
+temporary file has been written and synchronized; the production replacement
+`rename(2)` is then rejected and the old destination stays byte-identical. The
+same `delete_child` rule also prevents unlinking that already-created temporary
+file, so the low-level test deliberately records one stranded temporary file while
+the ACL is active instead of pretending cleanup succeeded under denied authority.
+Each ACL helper snapshots the directory POSIX mode and ordered `ls -lde` ACL entry
+list before injection, refuses a pre-existing identical deny rule, proves injection
+adds exactly one rule without changing mode, and requires post-`-a` restoration to
+match the complete baseline snapshot exactly. After that exact restoration a new
+durable replacement succeeds and the test removes the stranded witness. This is
+real ACL syscall evidence, not a claim that arbitrary permission loss can be cleaned
+up before authority is restored. Different-owner
+transitions, mounted-filesystem real directory-`fsync`, and real close-error behavior
+remain outside this witness.
 
 ## 2. Permission transition
 
-The retained permission test uses a real `chmod(2)` transition after the new
-manifest temporary file has been written and synchronized but before rename.
-The parent directory becomes read/search-only, so Darwin `rename(2)` fails with
-`EACCES` or `EPERM`. The test then restores 0700 permissions, releases the old
-writer and reopens the store. Reopen must observe a miss and remove both the
-unpublished blob and durable temporary manifest.
+The retained permission suite contains two real filesystem tests. The first uses
+a `chmod(2)` transition after the new manifest temporary file has been written and
+synchronized but before rename. The parent directory becomes read/search-only, so
+Darwin `rename(2)` fails with `EACCES` or `EPERM`. The second leaves mode `0700`
+unchanged and installs an ACL `deny delete_child` rule at the same switch point;
+the real manifest rename is rejected for the ACL reason. The ACL case uses the same
+pre/post mode plus ordered-entry snapshot equality check before it releases the old
+writer and reopens the store; the mode-transition case restores its original mode. Reopen
+must observe a miss and remove the unpublished blob plus temporary manifest before
+a later commit/read succeeds.
 
 Akashic does not claim that cleanup can succeed while the process lacks the
 required parent-directory write permission. The claim is convergence after the
@@ -112,8 +154,8 @@ The retained cases establish three separate failure boundaries:
    baseline is a verified hit, the attempted target is a miss, exactly one
    published blob remains and temporary-file count is zero.
 
-Quota matrix schema 2 requires all three cases to expose kernel `ENOSPC`; fault
-aggregate V6 binds that contract. The report fixes `wholeContainerFullClaim=false`,
+Quota matrix schema 2 requires all three cases to expose kernel `ENOSPC`; the
+current fault aggregate V10 binds that contract. The report fixes `wholeContainerFullClaim=false`,
 `physicalDeviceQualification=false` and `powerLossClaim=false`.
 
 ## 5. Process termination
@@ -181,8 +223,8 @@ physicalDeviceQualification = false
 
 Still outside the proven domain:
 
-- real filesystem-induced `fsync`, rename and close errors;
-- real filesystem-induced `open`, ACL and different-owner transition failures;
+- real filesystem-induced directory-`fsync` and close errors;
+- different-owner transition failures;
 - multi-hour/high-iteration random-kill campaigns;
 - controller-cache loss, physical power removal and `F_FULLFSYNC` comparison;
 - stable physical-device I/O, energy and thermal qualification.

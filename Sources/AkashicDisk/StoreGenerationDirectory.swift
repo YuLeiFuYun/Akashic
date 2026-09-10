@@ -370,14 +370,18 @@ public enum StoreGenerationDirectory {
     private static func synchronizeFile(at url: URL) throws {
         let descriptor = Darwin.open(url.path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
         guard descriptor >= 0 else { throw posixError() }
-        defer { _ = Darwin.close(descriptor) }
-        var status = stat()
-        guard Darwin.fstat(descriptor, &status) == 0 else { throw posixError() }
-        let fileType = status.st_mode & S_IFMT
-        guard (fileType == S_IFREG || fileType == S_IFDIR),
-            status.st_uid == Darwin.geteuid()
-        else { throw AkashicError.storageUnavailable }
-        guard Darwin.fsync(descriptor) == 0 else { throw posixError() }
+        do {
+            var status = stat()
+            guard Darwin.fstat(descriptor, &status) == 0 else { throw posixError() }
+            let fileType = status.st_mode & S_IFMT
+            guard (fileType == S_IFREG || fileType == S_IFDIR),
+                status.st_uid == Darwin.geteuid()
+            else { throw AkashicError.storageUnavailable }
+        } catch {
+            _ = Darwin.close(descriptor)
+            throw error
+        }
+        try DurableFileDescriptorSynchronization.synchronizeAndClose(descriptor)
     }
 
     private static func synchronizeDirectory(at url: URL) throws {
