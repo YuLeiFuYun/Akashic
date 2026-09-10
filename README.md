@@ -134,7 +134,7 @@ scripts/verify-platform-matrix.sh AkashicDisk ios-device
 - owner 迁移，以及由真实文件系统触发的 directory-`fsync`/close 错误；父目录 mode transition 与 ACL 已覆盖生产临时文件 create/open、durable rename、manifest rename 和 rename 后 parent-directory open 的真实 `EACCES`/`EPERM` 边界；
 - 目标设备 RSS、FD、I/O bytes、metadata write amplification、reopen latency 和 energy；
 - 真正的断电、`F_FULLFSYNC` 对照和数小时级高迭代 kill-at-random 实验；
-- 多进程 reader snapshot/lease；
+- 多进程 reader 的公开 snapshot/lease contract 仍未产品化；当前只资格化 package-internal retirement turnstile 机制，并由独立 OS 进程 S1–S6 本地证据验证 writer intent、reader admission、unlink 后已打开 descriptor 的稳定读取、进程退出锁释放，以及 external writer 已持 gate 时本地 reader / writer-intent waiter 不阻塞初始 reader release 的 deadlock-freedom，不新增 public reader-lease API；
 - 当前精确 revision 的远端 clean-clone 完整复验；
 - Fovea 差分 trace、W3/W8/W13 组合验证和 rollback。
 

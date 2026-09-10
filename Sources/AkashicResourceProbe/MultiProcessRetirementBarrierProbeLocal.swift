@@ -22,7 +22,7 @@ extension SegmentedManifestShadowProbe {
             let afterTwoPath = values["--after-two"]
         else { throw SegmentedManifestShadowError.invalidArguments }
 
-        let coordinator = try RetirementLocalReaderCoordinator(
+        let coordinator = try RetirementLocalReaderCoordinator.shared(
             path: URL(fileURLWithPath: barrierPath, isDirectory: false)
         )
         let firstCount = try coordinator.acquireReader()
@@ -89,7 +89,7 @@ extension SegmentedManifestShadowProbe {
             let releasedPath = values["--released"]
         else { throw SegmentedManifestShadowError.invalidArguments }
 
-        let coordinator = try RetirementLocalReaderCoordinator(
+        let coordinator = try RetirementLocalReaderCoordinator.shared(
             path: URL(fileURLWithPath: barrierPath, isDirectory: false)
         )
         var count = try coordinator.acquireReader()
@@ -173,7 +173,7 @@ extension SegmentedManifestShadowProbe {
             throw SegmentedManifestShadowError.invalidArguments
         }
 
-        let coordinator = try RetirementLocalReaderCoordinator(
+        let coordinator = try RetirementLocalReaderCoordinator.shared(
             path: URL(fileURLWithPath: values["--barrier"]!, isDirectory: false)
         )
         var readerCount = try coordinator.acquireReader()
@@ -283,4 +283,184 @@ extension SegmentedManifestShadowProbe {
         )
         FileHandle.standardOutput.write(Data("LOCAL-WRITER-RELEASED-SETTLED\n".utf8))
     }
+
+    private struct ExternalCoordinatorPaths: Sendable {
+        let barrier: String
+        let waiter: String
+        let ready: String
+        let start: String
+        let waiterStarted: String
+        let release: String
+        let released: String
+        let waiterDone: String
+        let final: String
+    }
+
+    private static func externalCoordinatorPaths(
+        arguments: [String]
+    ) throws -> ExternalCoordinatorPaths {
+        var values: [String: String] = [:]
+        var index = 0
+        while index < arguments.count {
+            guard index + 1 < arguments.count else {
+                throw SegmentedManifestShadowError.invalidArguments
+            }
+            values[arguments[index]] = arguments[index + 1]
+            index += 2
+        }
+        guard let barrier = values["--barrier"],
+            let waiter = values["--waiter"],
+            let ready = values["--ready"],
+            let start = values["--start"],
+            let waiterStarted = values["--waiter-started"],
+            let release = values["--release"],
+            let released = values["--released"],
+            let waiterDone = values["--waiter-done"],
+            let final = values["--final"],
+            waiter == "reader" || waiter == "writer"
+        else { throw SegmentedManifestShadowError.invalidArguments }
+        return ExternalCoordinatorPaths(
+            barrier: barrier,
+            waiter: waiter,
+            ready: ready,
+            start: start,
+            waiterStarted: waiterStarted,
+            release: release,
+            released: released,
+            waiterDone: waiterDone,
+            final: final
+        )
+    }
+
+    private static func waitForExternalCoordinatorSignal(_ path: String) async throws {
+        while !FileManager.default.fileExists(atPath: path) {
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
+    }
+
+    private static func writeExternalCoordinatorState(
+        phase: String,
+        readerCount: Int,
+        path: String,
+        stdoutMarker: String
+    ) throws {
+        try schema5RetirementWriteJSON(
+            RetirementLocalRefcountState(
+                schemaVersion: 1,
+                phase: phase,
+                readerCount: readerCount
+            ),
+            to: URL(fileURLWithPath: path, isDirectory: false)
+        )
+        FileHandle.standardOutput.write(Data((stdoutMarker + "\n").utf8))
+    }
+
+    private static func runExternalCoordinatorWaiter(
+        waiter: String,
+        coordinator: RetirementLocalReaderCoordinator,
+        startedPath: String
+    ) throws -> Int {
+        try Data("started\n".utf8).write(
+            to: URL(fileURLWithPath: startedPath, isDirectory: false),
+            options: .atomic
+        )
+        if waiter == "reader" {
+            let count = try coordinator.acquireReader()
+            guard count == 1 else { throw SegmentedManifestShadowError.invariantViolation }
+            let releasedCount = try coordinator.releaseReader()
+            guard releasedCount == 0 else {
+                throw SegmentedManifestShadowError.invariantViolation
+            }
+            return releasedCount
+        }
+        guard try coordinator.beginWriterIntent() else {
+            throw SegmentedManifestShadowError.invariantViolation
+        }
+        var acquired = try coordinator.tryFinishWriterAcquire()
+        while !acquired.acquired {
+            _ = Darwin.usleep(1_000)
+            acquired = try coordinator.tryFinishWriterAcquire()
+        }
+        guard acquired.readerCount == 0 else {
+            throw SegmentedManifestShadowError.invariantViolation
+        }
+        try coordinator.releaseWriter()
+        return 0
+    }
+
+    private static func verifyExternalCoordinatorFinalState(
+        waiter: String,
+        coordinator: RetirementLocalReaderCoordinator,
+        finalPath: String
+    ) throws {
+        let finalProbe = try coordinator.tryAcquireReader()
+        guard finalProbe.acquired, finalProbe.readerCount == 1 else {
+            throw SegmentedManifestShadowError.invariantViolation
+        }
+        let finalReaderCount = try coordinator.releaseReader()
+        guard finalReaderCount == 0 else {
+            throw SegmentedManifestShadowError.invariantViolation
+        }
+        try writeExternalCoordinatorState(
+            phase: "external-\(waiter)-final-clean",
+            readerCount: finalReaderCount,
+            path: finalPath,
+            stdoutMarker: "EXTERNAL-COORDINATOR-FINAL-CLEAN-SETTLED"
+        )
+    }
+
+    static func multiProcessRetirementExternalCoordinator(arguments: [String]) async throws {
+        let paths = try externalCoordinatorPaths(arguments: arguments)
+        let coordinator = try RetirementLocalReaderCoordinator.shared(
+            path: URL(fileURLWithPath: paths.barrier, isDirectory: false)
+        )
+        let initialReaderCount = try coordinator.acquireReader()
+        guard initialReaderCount == 1 else {
+            throw SegmentedManifestShadowError.invariantViolation
+        }
+        try writeExternalCoordinatorState(
+            phase: "external-\(paths.waiter)-initial-reader-held",
+            readerCount: initialReaderCount,
+            path: paths.ready,
+            stdoutMarker: "EXTERNAL-COORDINATOR-READY-SETTLED"
+        )
+
+        try await waitForExternalCoordinatorSignal(paths.start)
+        let localWaiter = Task.detached {
+            try runExternalCoordinatorWaiter(
+                waiter: paths.waiter,
+                coordinator: coordinator,
+                startedPath: paths.waiterStarted
+            )
+        }
+
+        try await waitForExternalCoordinatorSignal(paths.release)
+        let releasedCount = try coordinator.releaseReader()
+        guard releasedCount == 0 else {
+            throw SegmentedManifestShadowError.invariantViolation
+        }
+        try writeExternalCoordinatorState(
+            phase: "external-\(paths.waiter)-initial-reader-released",
+            readerCount: releasedCount,
+            path: paths.released,
+            stdoutMarker: "EXTERNAL-COORDINATOR-RELEASED-SETTLED"
+        )
+
+        let waiterFinalCount = try await localWaiter.value
+        guard waiterFinalCount == 0 else {
+            throw SegmentedManifestShadowError.invariantViolation
+        }
+        try writeExternalCoordinatorState(
+            phase: "external-\(paths.waiter)-waiter-done",
+            readerCount: waiterFinalCount,
+            path: paths.waiterDone,
+            stdoutMarker: "EXTERNAL-COORDINATOR-WAITER-DONE-SETTLED"
+        )
+        try verifyExternalCoordinatorFinalState(
+            waiter: paths.waiter,
+            coordinator: coordinator,
+            finalPath: paths.final
+        )
+    }
+
 }
