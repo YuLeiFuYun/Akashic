@@ -1,15 +1,14 @@
-name: Verify
+name: Akashic Exact Candidate Verification
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
   pull_request:
 
 permissions:
   contents: read
 
 concurrency:
-  group: akashic-verify-${{ github.ref }}
+  group: exact-akashic-verify-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -17,9 +16,73 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Checkout exact verified candidate commit
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
+          ref: 467762f08709c46d1a419bc335587b851f668f1d
+          fetch-depth: 0
           persist-credentials: false
+      - name: Restore exact candidate modes and prove workflow authority
+        env:
+          EXPECTED_WORKING_TREE_DIGEST: "20b9fcd41f795ee3b143b8ed6e026f1d48d1262c73207a13078a58afdc2b5fd4"
+          EXPECTED_FILE_COUNT: "428"
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import stat
+          import subprocess
+          from pathlib import Path
+
+          modes = {"ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift":384,"ConformanceKits/BlobStore/v1/README.md":384,"ConformanceKits/BlobStore/v1/manifest.json":384,"ConformanceKits/BlobStore/v1/observation-schema.json":384,"ConformanceKits/BlobStore/v1/run.py":457,"ConformanceKits/_support.py":384,"Fixtures/BlobStoreConformance/ConformanceFactory.swift":384,"Fixtures/BlobStoreConformance/Package.swift":384,"Fixtures/BlobStoreConformance/Sources/AkashicBlobStoreConformanceFixture/AkashicBlobStoreConformanceFixture.swift":384,"Sources/AkashicMemory/ShardedMemoryCacheEvictionReporting.swift":384,"Sources/AkashicMemory/ShardedMemoryShardInsertion.swift":384,"Tools/Resource/test_capture_segmented_compaction_resource.py":384,"scripts/verify-blob-store-conformance-kit.sh":457}
+          for raw, mode in modes.items():
+              path = Path(raw)
+              if not path.is_file() or path.is_symlink():
+                  raise SystemExit(f"mode restoration target is not a regular file: {raw}")
+              os.chmod(path, mode)
+
+          def stable(value):
+              payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+              return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+          tracked_raw = subprocess.check_output(["git", "ls-files", "-z"])
+          tracked = [Path(item.decode("utf-8")) for item in tracked_raw.split(b"\0") if item]
+          untracked_raw = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "-z"])
+          untracked = [item.decode("utf-8") for item in untracked_raw.split(b"\0") if item]
+          if untracked:
+              raise SystemExit(f"unexpected untracked files before authority check: {untracked[:8]}")
+
+          manifest = {}
+          for path in sorted(set(tracked), key=lambda p: p.as_posix()):
+              key = path.as_posix()
+              if path.is_symlink():
+                  manifest[key] = stable({
+                      "kind": "symlink",
+                      "target": str(path.readlink()),
+                      "mode": stat.S_IMODE(path.lstat().st_mode),
+                  })
+              elif path.is_file():
+                  content = hashlib.sha256(path.read_bytes()).hexdigest()
+                  manifest[key] = stable({
+                      "kind": "file",
+                      "content_sha256": content,
+                      "mode": stat.S_IMODE(path.stat().st_mode),
+                  })
+              else:
+                  raise SystemExit(f"tracked path is neither file nor symlink: {key}")
+
+          digest = stable(manifest)
+          expected_digest = os.environ["EXPECTED_WORKING_TREE_DIGEST"]
+          expected_count = int(os.environ["EXPECTED_FILE_COUNT"] )
+          print(f"exact authority: files={len(manifest)} digest={digest} restored_modes={len(modes)}")
+          if len(manifest) != expected_count or digest != expected_digest:
+              raise SystemExit(f"candidate authority mismatch: files={len(manifest)} digest={digest}")
+          PY
+      - name: Verify exact candidate commit binding
+        run: |
+          test "$(git rev-parse HEAD)" = "467762f08709c46d1a419bc335587b851f668f1d"
+          printf 'candidate_snapshot=324cd7906e6619d58fee68a66682f7598cbc4cbeef62f93bf5916d102992e6e0\n'
       - name: Environment
         run: |
           set -eu
