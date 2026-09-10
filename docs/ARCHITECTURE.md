@@ -110,7 +110,9 @@ root manifest缺失不再等价于“首次初始化”。bootstrap在准备目�
 - 同进程 registry 防止 POSIX record-lock 的同进程多描述符缺口；
 - `lockf` 提供跨进程 writer exclusion；
 - writer 退出后内核释放锁，后续进程可重开；
-- 首版只声明同一 actor/store instance 内的并发 reader，不声明多进程 reader snapshot。
+- `AkashicDisk` 现在包含 package-internal 的两段 retirement turnstile authority：writer intent 先独占 `gate` 阻止新 reader 入场，再等待已入场 reader 释放共享 `retirement`；同进程由 canonical lock-path coordinator 以 reader refcount 补足 POSIX record-lock 的进程级语义；
+- 本地 macOS 资格证据必须由独立 OS 进程实际覆盖 late-reader blocking、writer pending/active、已打开并验证的 payload descriptor 在 unlink 后仍能逐字节/摘要读取、子进程退出后 record lock 释放，以及 external writer 已持有 gate 并等待 retirement 时，本地第二 reader 或 writer-intent waiter 不得阻塞初始 reader release 的 deadlock-freedom；`scripts/verify-multiprocess-retirement-lease.py` 的 S1–S6 是该证据入口，并由 `scripts/verify.sh` 调用；
+- 这仍不是公开 `FileBlobStore` 的多进程 reader contract：首版公开声明继续只覆盖同一 actor/store instance 内的并发 reader；没有新增 public reader lease API，也不把本地 macOS 机制证据描述为生产部署、远端 CI、断电或发布证据。
 
 ### StoreGeneration
 
