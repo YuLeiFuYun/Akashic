@@ -24,7 +24,7 @@ extension SegmentedManifestShadowProbe {
             throw SegmentedManifestShadowError.invalidArguments
         }
 
-        let coordinator = try RetirementLocalReaderCoordinator(
+        let coordinator = try RetirementLocalReaderCoordinator.shared(
             path: URL(fileURLWithPath: values["--barrier"]!, isDirectory: false)
         )
         guard try coordinator.beginWriterIntent() else {
@@ -89,6 +89,126 @@ extension SegmentedManifestShadowProbe {
             to: URL(fileURLWithPath: values["--writer-released"]!, isDirectory: false)
         )
         FileHandle.standardOutput.write(Data("LOCAL-REMOTE-WRITER-RELEASED-SETTLED\n".utf8))
+    }
+
+    static func retirementArgumentValues(_ arguments: [String]) throws -> [String: String] {
+        var values: [String: String] = [:]
+        var index = 0
+        while index < arguments.count {
+            guard index + 1 < arguments.count else {
+                throw SegmentedManifestShadowError.invalidArguments
+            }
+            values[arguments[index]] = arguments[index + 1]
+            index += 2
+        }
+        return values
+    }
+
+    static func multiProcessRetirementSeed(arguments: [String]) async throws {
+        let values = try retirementArgumentValues(arguments)
+        guard let rootPath = values["--root"], let label = values["--label"] else {
+            throw SegmentedManifestShadowError.invalidArguments
+        }
+
+        let root = URL(fileURLWithPath: rootPath, isDirectory: true)
+        try? FileManager.default.removeItem(at: root)
+        let identity = try schema5MigrationIdentities(labels: [label])[0]
+        try await prepareRetirementSeed(root: root, identity: identity)
+        let payload = try await readRetirementSeedPayload(root: root, identity: identity)
+        let resolved = try schema5RetirementResolve(root: root, label: label)
+        try validateRetirementSeed(
+            resolved: resolved,
+            physicalID: payload.physicalID,
+            data: payload.data,
+            identity: identity
+        )
+
+        let report = RetirementSeedResult(
+            schemaVersion: 1,
+            label: label,
+            physicalID: payload.physicalID.rawValue.uuidString.lowercased(),
+            byteCount: identity.data.count,
+            profile: resolved.root.profile,
+            baseKind: resolved.root.base.kind.rawValue,
+            payloadPathExists: FileManager.default.fileExists(atPath: resolved.payloadURL.path),
+            payloadExact: payload.data == identity.data,
+            digestExact: BlobDigest.sha256(of: payload.data) == identity.digest
+        )
+        try writeRetirementResult(report)
+    }
+
+    private static func prepareRetirementSeed(
+        root: URL,
+        identity: MigrationIdentity
+    ) async throws {
+        var store: FileBlobStore? = try await FileBlobStore.open(root: root)
+        _ = try await store!.commit(
+            data: identity.data,
+            digest: identity.digest,
+            partition: identity.partition
+        )
+        guard try await store!.migrateLegacyManifestToDirectoryHeadSchema4() else {
+            throw SegmentedManifestShadowError.invariantViolation
+        }
+        let migration = try await store!.resourceProbeMigrateDirectoryHeadSchema4ToSegmentedV1()
+        guard migration.root.runs.isEmpty else {
+            throw SegmentedManifestShadowError.invariantViolation
+        }
+        store = nil
+
+        let manifestURL = root.appendingPathComponent("manifest.json", isDirectory: false)
+        let segmentDirectory = root.appendingPathComponent(
+            FileBlobStore.segmentedManifestPrototypeDirectoryName,
+            isDirectory: true
+        )
+        let frozen = try SegmentedManifestPrototypeV1.readRoot(from: manifestURL)
+        let candidate = try SegmentedManifestBinaryBaseTransitionV3.prepare(
+            frozenRoot: frozen,
+            segmentDirectory: segmentDirectory,
+            candidateFileName: "base-binary-v2-\(UUID().uuidString.lowercased()).akb2"
+        )
+        try SegmentedManifestPrototypeV1.writeRoot(candidate.root, to: manifestURL)
+        let cleanup = try SegmentedManifestSegmentCleanupV1.reclaimUnreferenced(
+            root: candidate.root,
+            directory: segmentDirectory
+        )
+        guard cleanup.remainingDebtCount == 0,
+            candidate.root.profile == SegmentedManifestPrototypeV1.profileV3,
+            candidate.root.base.kind == .baseBinaryV2,
+            candidate.root.runs.isEmpty
+        else { throw SegmentedManifestShadowError.invariantViolation }
+    }
+
+    private static func readRetirementSeedPayload(
+        root: URL,
+        identity: MigrationIdentity
+    ) async throws -> (physicalID: PhysicalBlobID, data: Data) {
+        var store: FileBlobStore? = try await FileBlobStore.openSegmentedV3Candidate(root: root)
+        guard let physicalID = await store!.physicalID(
+            digest: identity.digest,
+            partition: identity.partition
+        ) else { throw SegmentedManifestShadowError.invariantViolation }
+        let data = try await store!.read(
+            digest: identity.digest,
+            partition: identity.partition
+        )
+        store = nil
+        return (physicalID, data)
+    }
+
+    private static func validateRetirementSeed(
+        resolved: (root: SegmentedManifestRootV1, entry: SegmentedManifestEntry, payloadURL: URL),
+        physicalID: PhysicalBlobID,
+        data: Data,
+        identity: MigrationIdentity
+    ) throws {
+        guard resolved.entry.physicalID == physicalID,
+            resolved.entry.byteCount == identity.data.count,
+            resolved.root.profile == SegmentedManifestPrototypeV1.profileV3,
+            resolved.root.base.kind == .baseBinaryV2,
+            data == identity.data,
+            BlobDigest.sha256(of: data) == identity.digest
+        else { throw SegmentedManifestShadowError.invariantViolation }
     }
 
     static func schema5RetirementResolve(
@@ -164,6 +284,13 @@ extension SegmentedManifestShadowProbe {
             attributes: [.posixPermissions: NSNumber(value: Int16(0o700))]
         )
         try DurableFileWriter.writeReplacing(data, to: url)
+    }
+
+    static func writeRetirementResult<T: Encodable>(_ value: T) throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        FileHandle.standardOutput.write(try encoder.encode(value))
+        FileHandle.standardOutput.write(Data([0x0A]))
     }
 
     static func schema5RetirementPOSIXError() -> POSIXError {

@@ -7,6 +7,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from verify_fovea_host_receipt import DEFAULT_RECEIPT, validate_receipt
+
 ROOT = Path(__file__).resolve().parents[2]
 STATUS = ROOT / "docs/CONFORMANCE_STATUS.json"
 ALLOWED = {
@@ -40,6 +42,9 @@ def main() -> int:
             errors.append(f"rule {key} must remain true")
     if rules.get("releaseQualified") is not False:
         errors.append("releaseQualified must remain false")
+
+    for error in validate_receipt(DEFAULT_RECEIPT):
+        errors.append(f"Fovea host receipt: {error}")
 
     obligations = document.get("obligations", [])
     actual_ids: list[str] = []

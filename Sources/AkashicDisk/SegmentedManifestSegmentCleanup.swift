@@ -163,9 +163,13 @@ package enum SegmentedManifestSegmentCleanupV1 {
             Darwin.open($0, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_DIRECTORY)
         }
         guard descriptor >= 0 else { throw posixError() }
-        defer { _ = Darwin.close(descriptor) }
-        try StorageDirectorySecurity.validateOpenedDirectory(descriptor)
-        guard Darwin.fsync(descriptor) == 0 else { throw posixError() }
+        do {
+            try StorageDirectorySecurity.validateOpenedDirectory(descriptor)
+        } catch {
+            _ = Darwin.close(descriptor)
+            throw error
+        }
+        try DurableFileDescriptorSynchronization.synchronizeAndClose(descriptor)
     }
 
     private static func posixError() -> POSIXError {

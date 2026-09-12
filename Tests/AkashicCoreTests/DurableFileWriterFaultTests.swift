@@ -174,6 +174,7 @@ struct DurableFileWriterFaultTests {
         }
     }
 
+
     @Test("ENOSPC after a partial write preserves the old destination")
     func noSpaceAfterPartialWritePreservesOldDestination() throws {
         try withTemporaryDirectory { root in
@@ -337,6 +338,80 @@ struct DurableFileWriterFaultTests {
         }
     }
 
+    @Test(
+        "Real parent read denial fails directory open after visible rename",
+        .enabled(if: Darwin.geteuid() != 0)
+    )
+    func realDirectoryOpenPermissionDenialReportsVisibleReplacement() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("state.bin")
+            let old = Data("old-before-real-directory-open-denial".utf8)
+            let replacement = Data(repeating: 0x66, count: 4_096)
+            try old.write(to: destination)
+            var renameObserved = false
+
+            do {
+                try DurableFileWriter.writeReplacing(
+                    replacement,
+                    to: destination,
+                    faultInjector: { _ in },
+                    renameObserver: {
+                        renameObserved = true
+                        guard Darwin.chmod(root.path, mode_t(0o300)) == 0 else {
+                            Issue.record("Failed to remove parent-directory read permission")
+                            return
+                        }
+                    }
+                )
+                Issue.record("Expected real parent-directory open denial")
+            } catch let error as POSIXError {
+                #expect(error.code == .EACCES || error.code == .EPERM)
+            }
+            defer { _ = Darwin.chmod(root.path, mode_t(0o700)) }
+
+            #expect(renameObserved)
+            #expect(Darwin.chmod(root.path, mode_t(0o700)) == 0)
+            #expect(try Data(contentsOf: destination) == replacement)
+            #expect(durableTemporaryFiles(in: root).isEmpty)
+        }
+    }
+
+    @Test("Real directory fsync reaches the kernel after the visible rename")
+    func realDirectorySynchronizationReachesKernelAfterRename() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("state.bin")
+            let replacement = Data(repeating: 0x68, count: 4_096)
+            var renameObserved = false
+            var directoryFsyncObserved = false
+
+            try DurableFileWriter.writeReplacing(
+                replacement,
+                to: destination,
+                faultInjector: { _ in },
+                renameObserver: { renameObserved = true },
+                operations: systemOperations(
+                    synchronize: { descriptor in
+                        var status = stat()
+                        guard Darwin.fstat(descriptor, &status) == 0 else {
+                            return -1
+                        }
+                        let result = Darwin.fsync(descriptor)
+                        if status.st_mode & S_IFMT == S_IFDIR, result == 0 {
+                            directoryFsyncObserved = true
+                            #expect(renameObserved)
+                        }
+                        return result
+                    }
+                )
+            )
+
+            #expect(renameObserved)
+            #expect(directoryFsyncObserved)
+            #expect(try Data(contentsOf: destination) == replacement)
+            #expect(durableTemporaryFiles(in: root).isEmpty)
+        }
+    }
+
     @Test("Directory fsync failure reports ambiguous durability after visible rename")
     func directorySynchronizationFailureReportsVisibleReplacement() throws {
         try withTemporaryDirectory { root in
@@ -372,9 +447,52 @@ struct DurableFileWriterFaultTests {
             #expect(durableTemporaryFiles(in: root).isEmpty)
         }
     }
+
+    @Test("Directory close failure is not retried after a successful directory fsync")
+    func directoryCloseFailureReportsVisibleReplacement() throws {
+        try withTemporaryDirectory { root in
+            let destination = root.appendingPathComponent("state.bin")
+            let old = Data("old-before-directory-close".utf8)
+            let replacement = Data(repeating: 0x67, count: 4_096)
+            try old.write(to: destination)
+            var closeCalls = 0
+            var synchronizeCalls = 0
+            var renameObserved = false
+
+            awaitPOSIXError(.EIO) {
+                try DurableFileWriter.writeReplacing(
+                    replacement,
+                    to: destination,
+                    faultInjector: { _ in },
+                    renameObserver: { renameObserved = true },
+                    operations: systemOperations(
+                        synchronize: { descriptor in
+                            synchronizeCalls += 1
+                            return Darwin.fsync(descriptor)
+                        },
+                        close: { descriptor in
+                            closeCalls += 1
+                            let result = Darwin.close(descriptor)
+                            if closeCalls == 2, result == 0 {
+                                errno = EIO
+                                return -1
+                            }
+                            return result
+                        }
+                    )
+                )
+            }
+
+            #expect(closeCalls == 2)
+            #expect(synchronizeCalls == 2)
+            #expect(renameObserved)
+            #expect(try Data(contentsOf: destination) == replacement)
+            #expect(durableTemporaryFiles(in: root).isEmpty)
+        }
+    }
 }
 
-private final class DurableFileSwitchPointRecorder: @unchecked Sendable {
+final class DurableFileSwitchPointRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private var values: [DurableFileWriteSwitchPoint] = []
 
@@ -435,7 +553,7 @@ private func awaitPOSIXError(
     }
 }
 
-private func withTemporaryDirectory<T>(_ operation: (URL) throws -> T) throws -> T {
+func withTemporaryDirectory<T>(_ operation: (URL) throws -> T) throws -> T {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(
         "akashic-durable-faults-\(UUID().uuidString.lowercased())",
         isDirectory: true
@@ -448,7 +566,7 @@ private func withTemporaryDirectory<T>(_ operation: (URL) throws -> T) throws ->
     return try operation(root)
 }
 
-private func durableTemporaryFiles(in root: URL) -> [URL] {
+func durableTemporaryFiles(in root: URL) -> [URL] {
     ((try? FileManager.default.contentsOfDirectory(
         at: root,
         includingPropertiesForKeys: nil,

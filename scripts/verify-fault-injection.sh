@@ -10,16 +10,16 @@ mkdir -p "$ARTIFACT_ROOT"
 SOURCE_IDENTITY="$ARTIFACT_ROOT/source-identity-before.json"
 python3 Tools/Identity/capture_source_identity.py --output "$SOURCE_IDENTITY"
 
-xcrun swift test --filter DurableFileWriterFaultTests -Xswiftc -warnings-as-errors \
+xcrun swift test -j 3 --filter DurableFileWriterFaultTests -Xswiftc -warnings-as-errors \
     >"$ARTIFACT_ROOT/durable-file-writer-tests.log" 2>&1
 cat "$ARTIFACT_ROOT/durable-file-writer-tests.log"
-xcrun swift test --filter FileBlobStorePermissionTransitionTests -Xswiftc -warnings-as-errors \
+xcrun swift test -j 3 --filter FileBlobStorePermissionTransitionTests -Xswiftc -warnings-as-errors \
     >"$ARTIFACT_ROOT/permission-transition-tests.log" 2>&1
 cat "$ARTIFACT_ROOT/permission-transition-tests.log"
-xcrun swift test --filter FileBlobStoreFastXattrFaultTests -Xswiftc -warnings-as-errors \
+xcrun swift test -j 3 --filter FileBlobStoreFastXattrFaultTests -Xswiftc -warnings-as-errors \
     >"$ARTIFACT_ROOT/fast-xattr-classification-tests.log" 2>&1
 cat "$ARTIFACT_ROOT/fast-xattr-classification-tests.log"
-xcrun swift test --filter FileBlobStoreFastCommitFaultTests -Xswiftc -warnings-as-errors \
+xcrun swift test -j 3 --filter FileBlobStoreFastCommitFaultTests -Xswiftc -warnings-as-errors \
     >"$ARTIFACT_ROOT/fast-commit-syscall-tests.log" 2>&1
 cat "$ARTIFACT_ROOT/fast-commit-syscall-tests.log"
 

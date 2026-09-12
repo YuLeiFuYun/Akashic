@@ -119,13 +119,15 @@ extension SegmentedSchema5StablePrefixCollapseCrashProbe {
 
     static func openV4(
         _ root: URL,
-        faultInjector: @escaping FileBlobStoreFaultInjector
+        faultInjector: @escaping FileBlobStoreFaultInjector,
+        runCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy = .rejectAtHardLimit
     ) async throws -> FileBlobStore {
         for _ in 0..<250 {
             do {
                 return try await FileBlobStore.openSegmentedV4Candidate(
                     root: root,
-                    faultInjector: faultInjector
+                    faultInjector: faultInjector,
+                    runCapacityPolicy: runCapacityPolicy
                 )
             } catch AkashicError.storageUnavailable {
                 await Task.yield()

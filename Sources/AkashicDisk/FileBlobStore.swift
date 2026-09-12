@@ -306,7 +306,8 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
     package static func openSegmentedV2Candidate(
         root: URL,
         limits: FileBlobStoreLimits = FileBlobStoreLimits(),
-        faultInjector: @escaping FileBlobStoreFaultInjector = { _ in }
+        faultInjector: @escaping FileBlobStoreFaultInjector = { _ in },
+        directoryHeadOperations: FileBlobStoreDirectoryHeadOperations = .system
     ) async throws -> FileBlobStore {
         try await open(
             root: root,
@@ -314,7 +315,7 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
             faultInjector: faultInjector,
             bootstrapObserver: { _ in },
             fastCommitOperations: .system,
-            directoryHeadOperations: .system,
+            directoryHeadOperations: directoryHeadOperations,
             readOperations: .system,
             allowsSegmentedProfileV2: true,
             allowsSegmentedProfileV3: false,
@@ -326,7 +327,8 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         root: URL,
         limits: FileBlobStoreLimits = FileBlobStoreLimits(),
         faultInjector: @escaping FileBlobStoreFaultInjector = { _ in },
-        runCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy = .rejectAtHardLimit
+        runCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy = .rejectAtHardLimit,
+        directoryHeadOperations: FileBlobStoreDirectoryHeadOperations = .system
     ) async throws -> FileBlobStore {
         try await open(
             root: root,
@@ -334,7 +336,7 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
             faultInjector: faultInjector,
             bootstrapObserver: { _ in },
             fastCommitOperations: .system,
-            directoryHeadOperations: .system,
+            directoryHeadOperations: directoryHeadOperations,
             readOperations: .system,
             allowsSegmentedProfileV2: false,
             allowsSegmentedProfileV3: true,
@@ -349,7 +351,8 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         root: URL,
         limits: FileBlobStoreLimits = FileBlobStoreLimits(),
         faultInjector: @escaping FileBlobStoreFaultInjector = { _ in },
-        runCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy = .rejectAtHardLimit
+        runCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy = .rejectAtHardLimit,
+        directoryHeadOperations: FileBlobStoreDirectoryHeadOperations = .system
     ) async throws -> FileBlobStore {
         if let prefixRunCount = runCapacityPolicy.automaticV4StablePrefixRunCount,
             !(2...62).contains(prefixRunCount)
@@ -362,7 +365,7 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
             faultInjector: faultInjector,
             bootstrapObserver: { _ in },
             fastCommitOperations: .system,
-            directoryHeadOperations: .system,
+            directoryHeadOperations: directoryHeadOperations,
             readOperations: .system,
             allowsSegmentedProfileV2: false,
             allowsSegmentedProfileV3: false,

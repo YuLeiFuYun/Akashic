@@ -121,13 +121,13 @@ extension FileBlobStore {
     static func directoryHeadSynchronizeDirectory(_ directory: URL) throws {
         let descriptor = Darwin.open(directory.path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
         guard descriptor >= 0 else { throw directoryHeadPOSIXError() }
-        defer { _ = Darwin.close(descriptor) }
-        try StorageDirectorySecurity.validateOpenedDirectory(descriptor)
-        while true {
-            if Darwin.fsync(descriptor) == 0 { return }
-            if errno == EINTR { continue }
-            throw directoryHeadPOSIXError()
+        do {
+            try StorageDirectorySecurity.validateOpenedDirectory(descriptor)
+        } catch {
+            _ = Darwin.close(descriptor)
+            throw error
         }
+        try DurableFileDescriptorSynchronization.synchronizeAndClose(descriptor)
     }
 
     private static func directoryHeadPOSIXError() -> POSIXError {

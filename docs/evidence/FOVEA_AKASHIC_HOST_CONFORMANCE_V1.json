@@ -1,0 +1,74 @@
+{
+  "claims": {
+    "exactComponentPin": true,
+    "hostSemanticConformance": true,
+    "physicalDeviceQualification": false,
+    "releaseQualified": false,
+    "sourceBound": true
+  },
+  "component": "Akashic",
+  "componentReleaseTag": "0.1.0-alpha.7",
+  "componentRepositoryURL": "https://github.com/YuLeiFuYun/Akashic.git",
+  "componentRevision": "0376b960ec8abe54f2d4a9d7d66e97f395215eaf",
+  "errors": [],
+  "host": "Fovea",
+  "hostVerifiedTree": "d51bc47a29b2982fb86cdeda20f5f077a5a870b8",
+  "limitations": [
+    "This receipt proves the five listed Fovea/Akashic host composition semantics against the exact pinned Akashic source revision; it is not protected-release or physical-device evidence."
+  ],
+  "obligations": [
+    {
+      "obligation": "AKASHIC-CT-022",
+      "passed": true,
+      "semantics": "ContentID-to-Akashic content identity adaptation preserves exact bytes and namespace privacy",
+      "source": "Tests/FoveaTests/AkashicHostAdapterTests.swift",
+      "sourceSHA256": "275c7a6bc4793feae310712b29d05aa21c6644046486a3ef09c8fef008f772a3",
+      "test": "testTypedContentAndPartitionAdapterPreservesExactIdentity_AKASHIC_CT_022"
+    },
+    {
+      "obligation": "AKASHIC-CT-023",
+      "passed": true,
+      "semantics": "derived-raster record publication failure removes the already-published unreachable Akashic blob and leaves no record debt",
+      "source": "Tests/FoveaTests/DerivedRasterPersistenceTests.swift",
+      "sourceSHA256": "ac848ef9cbfdcadfe12a9a793c1729d52d57f8efd417a50d1541859728f0c560",
+      "test": "testRecordPublicationFailureCleansUnreachableBlob_W11_PT_018"
+    },
+    {
+      "obligation": "AKASHIC-CT-024",
+      "passed": true,
+      "semantics": "namespace revoke racing a late Akashic blob commit leaves neither the late blob nor its representation record",
+      "source": "Tests/FoveaTests/AuthGalleryTests.swift",
+      "sourceSHA256": "0dae0547275bb2fdaa9cf723da7cd4b85a861fcb187618f7c88a9a36e6bd0739",
+      "test": "testRevokeDuringBlobCommitRemovesLateBlobAndRecord"
+    },
+    {
+      "obligation": "AKASHIC-CT-025",
+      "passed": true,
+      "semantics": "a real AkashicOriginalEncodedStore blob-byte limit rejects transactional cache staging without overriding final decoded delivery or publishing blob/record residue",
+      "source": "Tests/FoveaTests/StagingAndStorageTests.swift",
+      "sourceSHA256": "bfa5974b143798d396d224519c28a6a209b26a468667c04cc2cc9a98a5a32e89",
+      "test": "testRealAkashicBlobLimitDoesNotOverrideFinalOrPublishRecord_AKASHIC_CT_025"
+    },
+    {
+      "obligation": "AKASHIC-CT-026",
+      "passed": true,
+      "semantics": "qualified persistent-store provider descriptor substitution is rejected before accepting the returned bundle",
+      "source": "Tests/FoveaTests/PluggableComponentTests.swift",
+      "sourceSHA256": "64296bdf78e9407db6918cefdc08729a23a9f3e73b50eb5ab5e756ee1b3fbf3f",
+      "test": "testQualifiedPersistentStoreProviderRejectsDescriptorSubstitution_CACHE_PT_045"
+    }
+  ],
+  "packageResolvedRevision": "0376b960ec8abe54f2d4a9d7d66e97f395215eaf",
+  "reportID": "FOVEA-AKASHIC-HOST-CONFORMANCE-V1",
+  "schemaVersion": 1,
+  "status": "passed",
+  "testCommand": [
+    "swift",
+    "test",
+    "-j",
+    "3",
+    "--filter",
+    "testTypedContentAndPartitionAdapterPreservesExactIdentity_AKASHIC_CT_022|testRecordPublicationFailureCleansUnreachableBlob_W11_PT_018|testRevokeDuringBlobCommitRemovesLateBlobAndRecord|testRealAkashicBlobLimitDoesNotOverrideFinalOrPublishRecord_AKASHIC_CT_025|testQualifiedPersistentStoreProviderRejectsDescriptorSubstitution_CACHE_PT_045"
+  ],
+  "testLog": ".artifacts/conformance/akashic-host-v1/swift-test.log"
+}

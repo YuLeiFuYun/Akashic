@@ -138,7 +138,8 @@ enum SegmentedSchema5RescueDebtSelfRestorationProbe {
                 if faultArm.shouldFail(point) {
                     throw RescueDebtSelfRestorationProbeError.injectedPreRootFailure
                 }
-            }
+            },
+            runCapacityPolicy: .synchronousV4RunCollapseThenCompactionAtHardLimit
         )
         let baseline = await store!.resourceProbeManifestShadowSnapshot()
         trace("fault-store-open")

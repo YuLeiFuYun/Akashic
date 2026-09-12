@@ -29,7 +29,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-004",
       "status": "implemented-local",
@@ -37,7 +39,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-005",
       "status": "implemented-local",
@@ -45,7 +49,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-006",
       "status": "implemented-local",
@@ -53,7 +59,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-007",
       "status": "implemented-local",
@@ -61,7 +69,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-008",
       "status": "implemented-local",
@@ -69,7 +79,9 @@
     },
     {
       "evidencePaths": [
-        "Tests/AkashicDiskTests/FileBlobStoreTests.swift"
+        "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-009",
       "status": "implemented-local",
@@ -78,7 +90,9 @@
     {
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
-        "Sources/AkashicDisk/FileBlobStoreIdentity.swift"
+        "Sources/AkashicDisk/FileBlobStoreIdentity.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-010",
       "status": "implemented-local",
@@ -116,7 +130,9 @@
       "evidencePaths": [
         "Sources/AkashicCore/BoundedDirectoryReader.swift",
         "Sources/AkashicDisk/FileBlobStoreMaintenance.swift",
+        "Tests/AkashicCoreTests/DurableFileWriterFaultTests.swift",
         "Tests/AkashicDiskTests/FileBlobStorePermissionTransitionTests.swift",
+        "Tools/Crash/verify_fault_injection_report.py",
         "Tools/Crash/verify_process_crash_matrix.py",
         "Tools/Crash/verify_random_kill_matrix.py",
         "Sources/AkashicCrashProbe/FullVolumeProbe.swift",
@@ -126,12 +142,14 @@
       ],
       "id": "AKASHIC-CT-013",
       "status": "implemented-local-process-crash",
-      "summary": "Exact and random process termination, a real permission transition, full mounted-APFS exhaustion and quota schema 2 remove unpublished blobs and durable temporary files on reopen while preserving published blobs and direct kernel ENOSPC."
+      "summary": "Exact and random process termination, real parent-mode and ACL permission transitions, a production-path post-rename parent-directory descriptor reaching successful kernel fsync, full mounted-APFS exhaustion and quota schema 2 converge after authority restoration: reopen removes unpublished blobs and durable temporary files while preserving published blobs and direct kernel ENOSPC. ACL witnesses require exact pre/post ordered ACL-entry snapshot equality and unchanged POSIX mode; low-level ACL delete_child denial may strand its already-created temporary file while that denial remains active, so cleanup is not claimed before restoration."
     },
     {
       "evidencePaths": [
         "Tests/AkashicDiskTests/StoreGenerationTests.swift",
-        "Sources/AkashicDisk/StoreGenerationDirectory.swift"
+        "Sources/AkashicDisk/StoreGenerationDirectory.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-014",
       "status": "implemented-local",
@@ -148,13 +166,14 @@
     {
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
+        "Tests/AkashicCoreTests/DurableFileWriterFaultTests.swift",
         "Tests/AkashicDiskTests/FileBlobStorePermissionTransitionTests.swift",
         "Tests/AkashicCoreTests/StorageDirectorySecurityOwnershipTests.swift",
         "Sources/AkashicCore/StorageDirectorySecurity.swift"
       ],
       "id": "AKASHIC-CT-016",
       "status": "implemented-local",
-      "summary": "Symlink, hardlink, wrong file type, unsafe mode and live parent-directory permission transition tests pass; the owner-only fstat gate is exercised with a real different-owner regular descriptor, using a read-only root-owned system fixture for non-root runners and a temporary chowned fixture when the runner itself is root."
+      "summary": "Symlink, hardlink, wrong file type, unsafe mode, parent-mode transitions, and real macOS ACL add_file/delete_child denials pass without changing the tested directories' POSIX mode; ACL injection/restoration additionally requires exact ordered ACL-entry snapshot equality. The owner-only fstat gate is exercised with a real different-owner regular descriptor, using a read-only root-owned system fixture for non-root runners and a temporary chowned fixture when the runner itself is root."
     },
     {
       "evidencePaths": [
@@ -193,7 +212,9 @@
     {
       "evidencePaths": [
         "Tests/AkashicDiskTests/FileBlobStoreTests.swift",
-        "Sources/AkashicDisk/StoreWriterLease.swift"
+        "Sources/AkashicDisk/StoreWriterLease.swift",
+        "ConformanceKits/BlobStore/v1/Harness/BlobStoreConformanceTests.swift",
+        "ConformanceKits/BlobStore/v1/manifest.json"
       ],
       "id": "AKASHIC-CT-020",
       "status": "implemented-local-cross-process-lock",
@@ -209,34 +230,49 @@
       "summary": "Concurrent readers in one store instance return stable bytes; no multi-process reader guarantee is claimed."
     },
     {
-      "evidencePaths": [],
+      "evidencePaths": [
+        "docs/evidence/FOVEA_AKASHIC_HOST_CONFORMANCE_V1.json",
+        "Tools/Conformance/verify_fovea_host_receipt.py"
+      ],
       "id": "AKASHIC-CT-022",
-      "status": "planned",
-      "summary": "A source-bound temporary Fovea package-slice qualification passes current-package ContentID-to-BlobDigest exact identity adaptation, but no durable host-owned conformance receipt is wired into Akashic; the host obligation therefore remains planned and carries no component-local evidence path."
+      "status": "implemented-local-scope-limited",
+      "summary": "Fovea now emits a durable source-bound host receipt for exact ContentID-to-Akashic identity adaptation. The receipt binds the Fovea working tree and five host semantic tests to the exact Akashic 0.1.0-alpha.7 revision; this is local host-composition evidence, not protected-release or physical-device qualification."
     },
     {
-      "evidencePaths": [],
+      "evidencePaths": [
+        "docs/evidence/FOVEA_AKASHIC_HOST_CONFORMANCE_V1.json",
+        "Tools/Conformance/verify_fovea_host_receipt.py"
+      ],
       "id": "AKASHIC-CT-023",
-      "status": "planned",
-      "summary": "A source-bound temporary Fovea package-slice qualification passes record-publication failure cleanup with AkashicDerivedRasterStore and leaves no unreachable blob/record debt, but no durable host-owned conformance receipt is wired into Akashic; the host obligation remains planned."
+      "status": "implemented-local-scope-limited",
+      "summary": "Fovea host receipt V1 runs the real AkashicDerivedRasterStore record-publication failure path and proves the already-published unreachable blob is cleaned with no representation-record debt. The receipt is source-bound to the exact Akashic 0.1.0-alpha.7 pin and remains local, non-release evidence."
     },
     {
-      "evidencePaths": [],
+      "evidencePaths": [
+        "docs/evidence/FOVEA_AKASHIC_HOST_CONFORMANCE_V1.json",
+        "Tools/Conformance/verify_fovea_host_receipt.py"
+      ],
       "id": "AKASHIC-CT-024",
-      "status": "planned",
-      "summary": "A source-bound temporary Fovea package-slice qualification passes revoke-versus-late-blob publication cleanup against current Akashic, but no durable host-owned conformance receipt is wired into Akashic; the host obligation remains planned."
+      "status": "implemented-local-scope-limited",
+      "summary": "Fovea host receipt V1 runs namespace revoke against an in-flight late Akashic blob commit and proves neither the late blob nor representation record survives. The receipt is source-bound to the exact Akashic 0.1.0-alpha.7 pin and remains local, non-release evidence."
     },
     {
-      "evidencePaths": [],
+      "evidencePaths": [
+        "docs/evidence/FOVEA_AKASHIC_HOST_CONFORMANCE_V1.json",
+        "Tools/Conformance/verify_fovea_host_receipt.py"
+      ],
       "id": "AKASHIC-CT-025",
-      "status": "planned",
-      "summary": "A source-bound temporary Fovea package-slice qualification uses the real current AkashicOriginalEncodedStore, forces transactional stage failure with a blob-byte limit, still returns the final decoded image, and leaves neither blob nor representation record; no durable host-owned conformance receipt is wired into Akashic, so the host obligation remains planned."
+      "status": "implemented-local-scope-limited",
+      "summary": "Fovea host receipt V1 uses the real AkashicOriginalEncodedStore with a one-byte maximum blob limit: transactional cache staging fails, the final decoded image is still delivered, and neither blob nor representation record is published. The receipt is source-bound to the exact Akashic 0.1.0-alpha.7 pin and remains local, non-release evidence."
     },
     {
-      "evidencePaths": [],
+      "evidencePaths": [
+        "docs/evidence/FOVEA_AKASHIC_HOST_CONFORMANCE_V1.json",
+        "Tools/Conformance/verify_fovea_host_receipt.py"
+      ],
       "id": "AKASHIC-CT-026",
-      "status": "planned",
-      "summary": "A source-bound temporary Fovea package-slice qualification passes adversarial qualified-provider descriptor substitution rejection against current Akashic, but no durable host-owned conformance receipt is wired into Akashic; the host obligation remains planned."
+      "status": "implemented-local-scope-limited",
+      "summary": "Fovea host receipt V1 runs adversarial qualified persistent-store provider descriptor substitution and proves the substituted bundle identity is rejected. The receipt is source-bound to the exact Akashic 0.1.0-alpha.7 pin and remains local, non-release evidence."
     },
     {
       "evidencePaths": [
@@ -477,7 +513,7 @@
       ],
       "id": "AKASHIC-CT-051",
       "status": "implemented-local",
-      "summary": "An intentionally skewed resident whose cost exactly equals a shrunken global limit survives 75\u219260 and subsequent 60\u219275 resize operations with zero removals, fixing the equal-cost/no-op resize boundary."
+      "summary": "An intentionally skewed resident whose cost exactly equals a shrunken global limit survives 75→60 and subsequent 60→75 resize operations with zero removals, fixing the equal-cost/no-op resize boundary."
     },
     {
       "evidencePaths": [
@@ -487,7 +523,7 @@
       ],
       "id": "AKASHIC-CT-052",
       "status": "implemented-local",
-      "summary": "Global limit shrink chooses the best immediate victim among each shard's current legal SIEVE candidate instead of preserving low-index shards first; a 102\u2192101 shrink releases one 1-cost entry rather than an avoidable 100-cost resident."
+      "summary": "Global limit shrink chooses the best immediate victim among each shard's current legal SIEVE candidate instead of preserving low-index shards first; a 102→101 shrink releases one 1-cost entry rather than an avoidable 100-cost resident."
     },
     {
       "evidencePaths": [
