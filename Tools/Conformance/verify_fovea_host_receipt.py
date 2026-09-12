@@ -69,13 +69,24 @@ def validate_receipt(receipt_path: Path, fovea_root: Path | None = None) -> list
 
     tag = str(value.get("componentReleaseTag") or "")
     revision = str(value.get("componentRevision") or "")
-    try:
-        tagged_revision = command(["git", "rev-parse", f"{tag}^{{commit}}"], ROOT)
-    except subprocess.CalledProcessError:
-        tagged_revision = ""
-        errors.append(f"cannot resolve Akashic receipt release tag {tag}")
-    if tagged_revision and revision != tagged_revision:
-        errors.append(f"Fovea receipt component revision does not match local {tag} tag")
+    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", tag) is None:
+        errors.append("Fovea receipt component release tag is missing or invalid")
+    if re.fullmatch(r"[0-9a-f]{40}", revision) is None:
+        errors.append("Fovea receipt component revision is missing or invalid")
+    # Source-identity clean copies intentionally contain no Git metadata.  In a
+    # real checkout, resolve the historical tag and bind it to the receipt; in
+    # a Git-free clean copy, retain the receipt's explicit tag/revision format
+    # checks and package-resolved binding without inventing repository state.
+    if (ROOT / ".git").exists() and tag:
+        try:
+            tagged_revision = command(
+                ["git", "rev-parse", f"refs/tags/{tag}^{{commit}}"], ROOT
+            )
+        except subprocess.CalledProcessError:
+            tagged_revision = ""
+            errors.append(f"cannot resolve Akashic receipt release tag {tag}")
+        if tagged_revision and revision != tagged_revision:
+            errors.append(f"Fovea receipt component revision does not match local {tag} tag")
     if value.get("packageResolvedRevision") != revision:
         errors.append("Fovea receipt Package.resolved revision differs from component revision")
 
