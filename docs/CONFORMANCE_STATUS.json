@@ -197,17 +197,16 @@
     },
     {
       "evidencePaths": [
-        "Sources/AkashicResourceProbe/AkashicResourceProbe.swift",
-        "Sources/AkashicResourceProbe/ResourceProbeMetadata.swift",
         "Sources/AkashicDisk/FileBlobStoreManifestRecord.swift",
         "Sources/AkashicDisk/FileBlobStoreManifestXattr.swift",
         "Tools/Resource/verify_local_resource_envelope.py",
         "Tools/Resource/capture_filesystem_io_ledger.py",
-        "scripts/verify-local-resource-envelope.sh"
+        "scripts/verify-local-resource-envelope.sh",
+        "docs/ARCHITECTURE.md"
       ],
       "id": "AKASHIC-CT-019",
       "status": "partial-local",
-      "summary": "Resource schema 3 separates regular metadata files from logical manifest-xattr bytes instead of fabricating xattr physical allocation. Source-bound APFS process-visible I/O shows the xattr fast-create path removes exactly one 4 KiB metadata-page write per populated blob versus the same-current-source sidecar control; retained 64x4 KiB, 32x64 KiB and 8x1 MiB populations finish at 1.015625x, 1.001953x and 1.000488x filesystem-process write ratios. Tiny 64 B/1 KiB payloads remain dominated by the filesystem payload block. NAND/controller bytes, stable-device and energy evidence remain absent."
+      "summary": "Resource schema 3 keeps regular metadata files separate from logical manifest-xattr bytes. Historical source-bound APFS process-visible I/O evidence records the retained xattr fast-create ratios; the dedicated AkashicResourceProbe source has since been retired, so this remains partial-local evidence only. NAND/controller bytes, stable-device, energy and power-loss evidence remain absent."
     },
     {
       "evidencePaths": [
@@ -1399,252 +1398,159 @@
     },
     {
       "id": "AKASHIC-CT-142",
-      "status": "implemented-local-scope-limited",
-      "summary": "The research V2 fixed-width binary base round-trips exact logical and PhysicalBlobID state and rejects payload corruption under its bounded wire contract.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestBinaryBase.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: The research V2 fixed-width binary base round-trips exact logical and PhysicalBlobID state and rejects payload corruption under its bounded wire contract.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-143",
-      "status": "implemented-local-scope-limited",
-      "summary": "Schema5 V1 accepts only JSON base descriptors and V2 accepts only binary-base descriptors; mixed profile/base-kind topologies fail closed.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: Schema5 V1 accepts only JSON base descriptors and V2 accepts only binary-base descriptors; mixed profile/base-kind topologies fail closed.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-144",
-      "status": "implemented-local-scope-limited",
-      "summary": "The V2 binary-base filename family is an exact lowercase UUID-shaped Akashic namespace; unreferenced valid candidates are bounded physical debt and malformed names are not adopted.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestSegmentCleanup.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: The V2 binary-base filename family is an exact lowercase UUID-shaped Akashic namespace; unreferenced valid candidates are bounded physical debt and malformed names are not adopted.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-145",
-      "status": "implemented-local-scope-limited",
-      "summary": "A package-only V2 root recovers a binary base to the exact semantic state and preserves every PhysicalBlobID.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: A package-only V2 root recovers a binary base to the exact semantic state and preserves every PhysicalBlobID.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-146",
-      "status": "implemented-local-scope-limited",
-      "summary": "The public FileBlobStore open contract remains V1-only while V2 is a research candidate; V2 qualification requires an explicit package-only open seam.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/FileBlobStore.swift",
-        "Sources/AkashicDisk/FileBlobStoreBootstrapManifest.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: The public FileBlobStore open contract remains V1-only while V2 is a research candidate; V2 qualification requires an explicit package-only open seam.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-147",
-      "status": "implemented-local-scope-limited",
-      "summary": "A V2 binary base replays the existing runV1 suffix format exactly, preserving one run grammar across V1 and V2 base representations.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: A V2 binary base replays the existing runV1 suffix format exactly, preserving one run grammar across V1 and V2 base representations.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-148",
-      "status": "implemented-local-scope-limited",
-      "summary": "V1-to-V2 prepare writes and verifies only a binary-base candidate; it does not publish root authority and preserves the segmented generation and semantic commitment.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestBinaryBaseTransition.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: V1-to-V2 prepare writes and verifies only a binary-base candidate; it does not publish root authority and preserves the segmented generation and semantic commitment.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-149",
-      "status": "implemented-local-scope-limited",
-      "summary": "Explicit V2 root publication preserves logical state and generation, after which strict segment GC retires only the old V1 base/run physical topology.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestBinaryBaseTransition.swift",
-        "Sources/AkashicDisk/SegmentedManifestSegmentCleanup.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: Explicit V2 root publication preserves logical state and generation, after which strict segment GC retires only the old V1 base/run physical topology.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-150",
-      "status": "implemented-local-scope-limited",
-      "summary": "Injected root-write faults around V1-to-V2 publication converge on one complete topology: pre-rename remains V1, post-rename is V2, with exact recovered state and bounded debt cleanup.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: Injected root-write faults around V1-to-V2 publication converge on one complete topology: pre-rename remains V1, post-rename is V2, with exact recovered state and bounded debt cleanup.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-151",
-      "status": "implemented-local-scope-limited",
-      "summary": "Appending an epoch run to a V2 root preserves the V2 profile and binary-base descriptor instead of leaking the V1 default root builder into mutation.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: Appending an epoch run to a V2 root preserves the V2 profile and binary-base descriptor instead of leaking the V1 default root builder into mutation.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-152",
-      "status": "implemented-local-scope-limited",
-      "summary": "V2 binary compaction preparation folds a frozen run history into a verified binary candidate without changing the authoritative root before publication.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/SegmentedManifestBinaryBaseTransition.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: V2 binary compaction preparation folds a frozen run history into a verified binary candidate without changing the authoritative root before publication.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-153",
-      "status": "implemented-local-scope-limited",
-      "summary": "The package-only V2 qualification open seam exercises the real FileBlobStore read/commit/remove/reopen path while the public open contract remains V1-only.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/FileBlobStore.swift",
-        "Sources/AkashicDisk/FileBlobStoreBootstrapManifest.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: The package-only V2 qualification open seam exercises the real FileBlobStore read/commit/remove/reopen path while the public open contract remains V1-only.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-154",
-      "status": "implemented-local-scope-limited",
-      "summary": "A V2 FileBlobStore survives 512 distinct-key mutations, publishes a V2 run checkpoint, rejects the V1 JSON compactor, and compacts back to a binary base without changing generation or untouched PhysicalBlobID state.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: A V2 FileBlobStore survives 512 distinct-key mutations, publishes a V2 run checkpoint, rejects the V1 JSON compactor, and compacts back to a binary base without changing generation or untouched PhysicalBlobID state.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-155",
-      "status": "implemented-local-scope-limited",
-      "summary": "V2 preserves logical partition isolation and the existing partition-scoped physical-dedup rule: equal digest across partitions retains distinct physical identity and independent removal authority.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseTests.swift",
-        "Sources/AkashicDisk/FileBlobStore.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: V2 preserves logical partition isolation and the existing partition-scoped physical-dedup rule: equal digest across partitions retains distinct physical identity and independent removal authority.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-156",
-      "status": "implemented-local-scope-limited",
-      "summary": "At the real V2 FileBlobStore 512-key checkpoint boundary, injected manifest-root faults converge by rename visibility: prior mutations never roll back, the boundary mutation is absent pre-rename and present post-rename, and fresh bootstrap repays orphan segment debt.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseFaultTests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: At the real V2 FileBlobStore 512-key checkpoint boundary, injected manifest-root faults converge by rename visibility: prior mutations never roll back, the boundary mutation is absent pre-rename and present post-rename, and fresh bootstrap repays orphan segment debt.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-157",
-      "status": "implemented-local-scope-limited",
-      "summary": "At V2 binary compaction root publication, injected manifest faults preserve exact logical and PhysicalBlobID authority: pre-rename reopens the old binary-base-plus-run topology and post-rename reopens the compacted binary base, with unreferenced topology debt repaid.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseFaultTests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift",
-        "Sources/AkashicDisk/SegmentedManifestBinaryBaseTransition.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V2 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: At V2 binary compaction root publication, injected manifest faults preserve exact logical and PhysicalBlobID authority: pre-rename reopens the old binary-base-plus-run topology and post-rename reopens the compacted binary base, with unreferenced topology debt repaid.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-158",
-      "status": "implemented-local-scope-limited",
-      "summary": "The V3 baseBinaryV2 candidate uses the fixed 92-byte record wire, round-trips exact segmented state, and rejects a checksummed record corruption without broadening public adoption.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/SegmentedManifestBinaryBaseV2.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: The V3 baseBinaryV2 candidate uses the fixed 92-byte record wire, round-trips exact segmented state, and rejects a checksummed record corruption without broadening public adoption.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-159",
-      "status": "implemented-local-scope-limited",
-      "summary": "V1, V2, and V3 segmented roots keep their base-kind contracts disjoint, so a baseBinaryV2 descriptor cannot be accepted by an older root profile and older binary or JSON bases cannot masquerade as V3.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeTypes.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: V1, V2, and V3 segmented roots keep their base-kind contracts disjoint, so a baseBinaryV2 descriptor cannot be accepted by an older root profile and older binary or JSON bases cannot masquerade as V3.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-160",
-      "status": "implemented-local-scope-limited",
-      "summary": "V3 baseBinaryV2 segment names are canonical and format-exact, while an otherwise valid but unreferenced V3 base candidate remains reclaimable physical debt rather than logical authority.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift",
-        "Sources/AkashicDisk/SegmentedManifestSegmentCleanup.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: V3 baseBinaryV2 segment names are canonical and format-exact, while an otherwise valid but unreferenced V3 base candidate remains reclaimable physical debt rather than logical authority.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-161",
-      "status": "implemented-local-scope-limited",
-      "summary": "Explicit V1-to-V3 preparation is non-authoritative, and V3 root publication preserves generation, exact logical state, and existing PhysicalBlobID authority while retiring only obsolete physical topology.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/SegmentedManifestBinaryBaseV3Transition.swift",
-        "Sources/AkashicDisk/SegmentedManifestSegmentCleanup.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: Explicit V1-to-V3 preparation is non-authoritative, and V3 root publication preserves generation, exact logical state, and existing PhysicalBlobID authority while retiring only obsolete physical topology.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-162",
-      "status": "implemented-local-scope-limited",
-      "summary": "Publishing an epoch run on a V3 root preserves the V3 profile and baseBinaryV2 descriptor while advancing generation and replaying the exact intended mutation.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: Publishing an epoch run on a V3 root preserves the V3 profile and baseBinaryV2 descriptor while advancing generation and replaying the exact intended mutation.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-163",
-      "status": "implemented-local-scope-limited",
-      "summary": "The public FileBlobStore open contract remains V1-only while an explicit package-only V3 qualification seam exercises real read, commit, reopen, and recovery paths without implying default adoption.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/FileBlobStore.swift",
-        "Sources/AkashicDisk/FileBlobStoreBootstrapManifest.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: The public FileBlobStore open contract remains V1-only while an explicit package-only V3 qualification seam exercises real read, commit, reopen, and recovery paths without implying default adoption.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-164",
-      "status": "implemented-local-scope-limited",
-      "summary": "A V3 FileBlobStore survives the 512-key checkpoint boundary and V3-specific compaction, preserving the baseBinaryV2 profile, generation semantics, readable payloads, and untouched PhysicalBlobID state across reopen.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: A V3 FileBlobStore survives the 512-key checkpoint boundary and V3-specific compaction, preserving the baseBinaryV2 profile, generation semantics, readable payloads, and untouched PhysicalBlobID state across reopen.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-165",
-      "status": "implemented-local-scope-limited",
-      "summary": "V3 keeps logical partition authority separate from physical identity: equal digest bytes across partitions receive distinct PhysicalBlobIDs, and removal in one partition cannot revoke the other partition.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/FileBlobStore.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: V3 keeps logical partition authority separate from physical identity: equal digest bytes across partitions receive distinct PhysicalBlobIDs, and removal in one partition cannot revoke the other partition.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-166",
-      "status": "implemented-local-scope-limited",
-      "summary": "At the real V3 FileBlobStore checkpoint root switch, injected manifest write faults converge by rename visibility without rolling back prior acknowledged authority; fresh bootstrap recovers one complete state and repays orphan segment debt.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3FaultTests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: At the real V3 FileBlobStore checkpoint root switch, injected manifest write faults converge by rename visibility without rolling back prior acknowledged authority; fresh bootstrap recovers one complete state and repays orphan segment debt.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-167",
-      "status": "implemented-local-scope-limited",
-      "summary": "At V3 compaction root publication, injected manifest faults preserve exact logical and PhysicalBlobID authority across the rename boundary, with old or new complete topology recoverable and unreferenced physical topology reclaimable.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3FaultTests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift",
-        "Sources/AkashicDisk/SegmentedManifestBinaryBaseV3Transition.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired schema5 V3 qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: At V3 compaction root publication, injected manifest faults preserve exact logical and PhysicalBlobID authority across the rename boundary, with old or new complete topology recoverable and unreferenced physical topology reclaimable.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-168",
@@ -1718,79 +1624,45 @@
     },
     {
       "id": "AKASHIC-CT-175",
-      "status": "implemented-local-scope-limited",
-      "summary": "The segmented V3 bounded-checkpoint boundary can publish a tombstone as the 512th distinct-key mutation without losing surviving entries; the deleted key remains absent and the same manifest shadow is recovered after reopen.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired segmented V3/V4 checkpoint-topology qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: The segmented V3 bounded-checkpoint boundary can publish a tombstone as the 512th distinct-key mutation without losing surviving entries; the deleted key remains absent and the same manifest shadow is recovered after reopen.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-176",
-      "status": "implemented-local-scope-limited",
-      "summary": "A segmented V3 bounded checkpoint can revoke one logical key and rebind the same PhysicalBlobID to a different partition-scoped key at the checkpoint boundary; the old authority remains absent and the transferred identity and bytes survive reopen.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired segmented V3/V4 checkpoint-topology qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: A segmented V3 bounded checkpoint can revoke one logical key and rebind the same PhysicalBlobID to a different partition-scoped key at the checkpoint boundary; the old authority remains absent and the transferred identity and bytes survive reopen.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-177",
-      "status": "implemented-local-scope-limited",
-      "summary": "Segmented V3 treats physical segment names as independent authority from deterministic content hashes, and checkpoint preseal remains correct when the post-preseal tail performs a cross-key PhysicalBlobID transfer; replay and reopen preserve the resulting authority.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpointPreseal.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired segmented V3/V4 checkpoint-topology qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: Segmented V3 treats physical segment names as independent authority from deterministic content hashes, and checkpoint preseal remains correct when the post-preseal tail performs a cross-key PhysicalBlobID transfer; replay and reopen preserve the resulting authority.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-178",
-      "status": "implemented-local-scope-limited",
-      "summary": "The segmented V4 compound-run encoding applies a bounded prefix plus tail overlay with tombstone and PhysicalBlobID-transfer semantics, rejects compound descriptors under a V3 root, and fails closed when the compound bytes are corrupted.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/SegmentedManifestCompoundRun.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeCodec.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired segmented V3/V4 checkpoint-topology qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: The segmented V4 compound-run encoding applies a bounded prefix plus tail overlay with tombstone and PhysicalBlobID-transfer semantics, rejects compound descriptors under a V3 root, and fails closed when the compound bytes are corrupted.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-179",
-      "status": "implemented-local-scope-limited",
-      "summary": "The segmented V4 compound-preseal path can freeze 480 distinct-key mutations, adopt the next 32-key tail, and publish one 512-record compound descriptor; V3 reopen rejects the V4 root while V4 reopen reproduces exact logical and PhysicalBlobID authority and leaves only referenced segment files.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCompoundPreseal.swift",
-        "Sources/AkashicDisk/SegmentedManifestCompoundRun.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired segmented V3/V4 checkpoint-topology qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: The segmented V4 compound-preseal path can freeze 480 distinct-key mutations, adopt the next 32-key tail, and publish one 512-record compound descriptor; V3 reopen rejects the V4 root while V4 reopen reproduces exact logical and PhysicalBlobID authority and leaves only referenced segment files.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-180",
-      "status": "implemented-local-scope-limited",
-      "summary": "When a segmented V4 compound preseal accumulates more than the bounded adopted-tail key budget, checkpoint publication falls back to the qualified ordinary run representation, reclaims the abandoned compound draft, and reopens with the same manifest authority.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCompoundPreseal.swift",
-        "Sources/AkashicDisk/SegmentedManifestCompoundRun.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCheckpoint.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired segmented V3/V4 checkpoint-topology qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: When a segmented V4 compound preseal accumulates more than the bounded adopted-tail key budget, checkpoint publication falls back to the qualified ordinary run representation, reclaims the abandoned compound draft, and reopens with the same manifest authority.",
+      "evidencePaths": []
     },
     {
       "id": "AKASHIC-CT-181",
-      "status": "implemented-local-scope-limited",
-      "summary": "At the 64-run hard cap, a segmented V4 history containing both ordinary and compound runs can be replayed, synchronously collapsed under the V4 hard-cap policy, and continue checkpoint progress without losing any logical entry or PhysicalBlobID; reopen retains the progressed state and only referenced segment files remain.",
-      "evidencePaths": [
-        "Tests/AkashicDiskTests/SegmentedManifestBinaryBaseV3Tests.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedRunCollapse.swift",
-        "Sources/AkashicDisk/SegmentedManifestRunCollapse.swift",
-        "Sources/AkashicDisk/FileBlobStoreSegmentedCompaction.swift",
-        "Sources/AkashicDisk/SegmentedManifestPrototypeIO.swift"
-      ]
+      "status": "retired",
+      "summary": "Retired segmented V3/V4 checkpoint-topology qualification obligation; the package-only research implementation and tests were removed from the slim repository, so no current conformance implementation is claimed. Historical scope: At the 64-run hard cap, a segmented V4 history containing both ordinary and compound runs can be replayed, synchronously collapsed under the V4 hard-cap policy, and continue checkpoint progress without losing any logical entry or PhysicalBlobID; reopen retains the progressed state and only referenced segment files remain.",
+      "evidencePaths": []
     }
   ],
   "reviewedOn": "2026-08-30",

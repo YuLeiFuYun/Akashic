@@ -3,90 +3,6 @@ import CryptoKit
 import Foundation
 
 extension SegmentedManifestPrototypeV1 {
-    package static func writeBaseJSON(
-        _ data: Data,
-        entryCount: Int,
-        fileName: String,
-        directory: URL
-    ) throws -> SegmentedManifestDescriptorV1 {
-        guard isCanonicalSegmentFileName(fileName, kind: .baseJSON),
-            entryCount >= 0,
-            entryCount <= 100_000,
-            data.count > 0,
-            data.count <= maximumBaseBytes,
-            data.count <= maximumReferencedSegmentBytes
-        else { throw AkashicError.invalidManifest }
-        try StorageDirectorySecurity.validateDirectory(directory)
-        let url = directory.appendingPathComponent(fileName)
-        guard !FileManager.default.fileExists(atPath: url.path) else {
-            throw AkashicError.storageUnavailable
-        }
-        try DurableFileWriter.writeReplacing(data, to: url)
-        try StorageDirectorySecurity.validateRegularFile(url)
-        return SegmentedManifestDescriptorV1(
-            kind: .baseJSON,
-            fileName: fileName,
-            byteCount: data.count,
-            recordCount: entryCount,
-            sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-        )
-    }
-
-    package static func writeBaseBinary(
-        _ state: [String: SegmentedManifestEntry],
-        fileName: String,
-        directory: URL
-    ) throws -> SegmentedManifestDescriptorV1 {
-        guard isCanonicalSegmentFileName(fileName, kind: .baseBinaryV1),
-            state.count <= SegmentedManifestBinaryBaseV1.maximumRecords
-        else { throw AkashicError.invalidManifest }
-        let data = try SegmentedManifestBinaryBaseV1.encode(state)
-        guard data.count <= maximumBaseBytes,
-            data.count <= maximumReferencedSegmentBytes
-        else { throw AkashicError.limitExceeded }
-        try StorageDirectorySecurity.validateDirectory(directory)
-        let url = directory.appendingPathComponent(fileName)
-        guard !FileManager.default.fileExists(atPath: url.path) else {
-            throw AkashicError.storageUnavailable
-        }
-        try DurableFileWriter.writeReplacing(data, to: url)
-        try StorageDirectorySecurity.validateRegularFile(url)
-        return SegmentedManifestDescriptorV1(
-            kind: .baseBinaryV1,
-            fileName: fileName,
-            byteCount: data.count,
-            recordCount: state.count,
-            sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-        )
-    }
-
-    package static func writeBaseBinaryV2(
-        _ state: [String: SegmentedManifestEntry],
-        fileName: String,
-        directory: URL
-    ) throws -> SegmentedManifestDescriptorV1 {
-        guard isCanonicalSegmentFileName(fileName, kind: .baseBinaryV2),
-            state.count <= SegmentedManifestBinaryBaseV2.maximumRecords
-        else { throw AkashicError.invalidManifest }
-        let data = try SegmentedManifestBinaryBaseV2.encode(state)
-        guard data.count <= maximumBaseBytes,
-            data.count <= maximumReferencedSegmentBytes
-        else { throw AkashicError.limitExceeded }
-        try StorageDirectorySecurity.validateDirectory(directory)
-        let url = directory.appendingPathComponent(fileName)
-        guard !FileManager.default.fileExists(atPath: url.path) else {
-            throw AkashicError.storageUnavailable
-        }
-        try DurableFileWriter.writeReplacing(data, to: url)
-        try StorageDirectorySecurity.validateRegularFile(url)
-        return SegmentedManifestDescriptorV1(
-            kind: .baseBinaryV2,
-            fileName: fileName,
-            byteCount: data.count,
-            recordCount: state.count,
-            sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-        )
-    }
 
     package static func writeRun(
         _ mutations: [SegmentedManifestMutation],
@@ -210,11 +126,23 @@ extension SegmentedManifestPrototypeV1 {
         let result: [String: SegmentedManifestEntry]
         switch descriptor.kind {
         case .baseJSON:
-            let decoded = try FileBlobStore.resourceProbeDecodeDirectoryHeadSnapshot(data)
-            guard decoded.count == descriptor.recordCount else { throw AkashicError.invalidManifest }
+            guard data.count <= FileBlobStore.maximumManifestBytes else {
+                throw AkashicError.invalidManifest
+            }
+            let manifest: FileBlobStore.Manifest
+            do {
+                manifest = try JSONDecoder().decode(FileBlobStore.Manifest.self, from: data)
+            } catch {
+                throw AkashicError.invalidManifest
+            }
+            guard manifest.schemaVersion == FileBlobStore.directoryHeadManifestSchemaVersion,
+                manifest.deltaCarrierProfile == .directoryHeadV2,
+                manifest.entries.count == descriptor.recordCount,
+                manifest.entries.count <= FileBlobStore.maximumManifestEntryCount
+            else { throw AkashicError.invalidManifest }
             var converted: [String: SegmentedManifestEntry] = [:]
-            converted.reserveCapacity(decoded.count)
-            for (key, entry) in decoded {
+            converted.reserveCapacity(manifest.entries.count)
+            for (key, entry) in manifest.entries {
                 converted[key] = SegmentedManifestEntry(
                     key: key,
                     physicalID: entry.physicalID,
@@ -225,13 +153,7 @@ extension SegmentedManifestPrototypeV1 {
                 )
             }
             result = converted
-        case .baseBinaryV1:
-            result = try SegmentedManifestBinaryBaseV1.decode(data)
-            guard result.count == descriptor.recordCount else { throw AkashicError.invalidManifest }
-        case .baseBinaryV2:
-            result = try SegmentedManifestBinaryBaseV2.decode(data)
-            guard result.count == descriptor.recordCount else { throw AkashicError.invalidManifest }
-        case .runV1, .compoundRunV1:
+        case .baseBinaryV1, .baseBinaryV2, .runV1, .compoundRunV1:
             throw AkashicError.invalidManifest
         }
         let physicalIDs = result.values.map(\.physicalID)
@@ -243,17 +165,13 @@ extension SegmentedManifestPrototypeV1 {
         _ descriptor: SegmentedManifestDescriptorV1,
         directory: URL
     ) throws -> [SegmentedManifestMutation] {
-        guard descriptor.kind == .runV1 || descriptor.kind == .compoundRunV1 else {
-            throw AkashicError.invalidManifest
-        }
+        guard descriptor.kind == .runV1 else { throw AkashicError.invalidManifest }
         let data = try readDescriptorData(descriptor, directory: directory)
         let mutations: [SegmentedManifestMutation]
         switch descriptor.kind {
         case .runV1:
             mutations = try decodeRun(data)
-        case .compoundRunV1:
-            mutations = try SegmentedManifestCompoundRunV1.decode(data)
-        case .baseJSON, .baseBinaryV1, .baseBinaryV2:
+        case .baseJSON, .baseBinaryV1, .baseBinaryV2, .compoundRunV1:
             throw AkashicError.invalidManifest
         }
         guard mutations.count == descriptor.recordCount else { throw AkashicError.invalidManifest }
@@ -271,12 +189,12 @@ extension SegmentedManifestPrototypeV1 {
         try StorageDirectorySecurity.validateRegularFile(url)
         let maximum: Int
         switch descriptor.kind {
-        case .baseJSON, .baseBinaryV1, .baseBinaryV2:
+        case .baseJSON:
             maximum = maximumBaseBytes
         case .runV1:
             maximum = maximumRunBytes
-        case .compoundRunV1:
-            maximum = SegmentedManifestCompoundRunV1.maximumBytes
+        case .baseBinaryV1, .baseBinaryV2, .compoundRunV1:
+            throw AkashicError.invalidManifest
         }
         guard descriptor.byteCount <= maximum else { throw AkashicError.invalidManifest }
         let data = try BoundedFileReader.read(from: url, maximumBytes: descriptor.byteCount)
