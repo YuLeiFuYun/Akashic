@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "kitID": "AKASHIC-BLOB-STORE-CONFORMANCE-V1",
+  "contractVersion": 1,
+  "componentDependencies": {
+    "akashicContract": {
+      "packageIdentity": "Akashic",
+      "product": "AkashicCore",
+      "binding": "current-source-tree"
+    }
+  },
+  "factoryContract": {
+    "symbol": "BlobStoreUnderTest",
+    "methods": [
+      "open(root:softTotalBytes:maximumBlobBytes:) async throws -> any BlobStoreMaintaining & TransactionalBlobStoring",
+      "openGeneration(root:compatibilityFingerprint:) async throws -> StoreGenerationDescriptor"
+    ]
+  },
+  "observationSchema": "observation-schema.json",
+  "harness": "Harness/BlobStoreConformanceTests.swift",
+  "obligations": [
+    {
+      "id": "AKASHIC-BSC-001",
+      "summary": "Equal digest values remain logically isolated across typed partitions, and removal authority does not cross partition boundaries.",
+      "testName": "testPartitionVisibilityAndRemovalIsolation_BSC_001"
+    },
+    {
+      "id": "AKASHIC-BSC-002",
+      "summary": "A staged blob is invisible to both read and physicalID until its stage is explicitly published.",
+      "testName": "testStageIsInvisibleUntilPublish_BSC_002"
+    },
+    {
+      "id": "AKASHIC-BSC-003",
+      "summary": "Publish has one terminal transition; duplicate publish of the same stage fails with transactionConflict while the first publication remains readable.",
+      "testName": "testPublishHasOneTerminalTransition_BSC_003"
+    },
+    {
+      "id": "AKASHIC-BSC-004",
+      "summary": "Discard is idempotent and terminal; a discarded stage cannot later publish and never becomes logically readable.",
+      "testName": "testDiscardIsIdempotentAndTerminal_BSC_004"
+    },
+    {
+      "id": "AKASHIC-BSC-005",
+      "summary": "A duplicate verified commit in one partition reuses the same physical blob and reports the created-to-reused disposition transition.",
+      "testName": "testSamePartitionDuplicateCommitReusesPhysicalBlob_BSC_005"
+    },
+    {
+      "id": "AKASHIC-BSC-006",
+      "summary": "Equal digest values committed in different partitions remain physically distinct and each publication reports creation.",
+      "testName": "testCrossPartitionPhysicalDeduplicationIsForbidden_BSC_006"
+    },
+    {
+      "id": "AKASHIC-BSC-007",
+      "summary": "The store independently recomputes digest integrity before publication and leaves no physical authority after a mismatch.",
+      "testName": "testStoreRecomputesDigestBeforePublication_BSC_007"
+    },
+    {
+      "id": "AKASHIC-BSC-008",
+      "summary": "remove and removeAll revoke only their targeted logical authority while preserving unrelated digest and partition visibility.",
+      "testName": "testRemoveAndRemoveAllPreserveOtherAuthority_BSC_008"
+    },
+    {
+      "id": "AKASHIC-BSC-009",
+      "summary": "Bounded garbage collection retains exactly the declared live references and reports the removed blob and byte totals.",
+      "testName": "testGarbageCollectionRetainsOnlyDeclaredReferences_BSC_009"
+    },
+    {
+      "id": "AKASHIC-BSC-010",
+      "summary": "Successfully published bytes survive release of the store instance and a clean reopen of the same storage root.",
+      "testName": "testPublishedBytesSurviveStoreReopen_BSC_010"
+    },
+    {
+      "id": "AKASHIC-BSC-011",
+      "summary": "A store generation is stable for one compatibility fingerprint and changes identity when the compatibility fingerprint changes.",
+      "testName": "testGenerationIdentityIsStablePerCompatibilityFingerprint_BSC_011"
+    },
+    {
+      "id": "AKASHIC-BSC-012",
+      "summary": "Only one active writer may own a store root; a conflicting open fails with transactionConflict and release permits a later reopen.",
+      "testName": "testOneActiveWriterPerStoreRoot_BSC_012"
+    }
+  ],
+  "rules": {
+    "componentEvidenceDoesNotReplaceFoveaHostEvidence": true,
+    "referenceVectorsDoNotReplaceCrashOrFilesystemFaultEvidence": true,
+    "processCrashDoesNotImplyPowerLoss": true,
+    "releaseQualified": false,
+    "unsupportedOrSkippedFailsClosed": true
+  },
+  "supportedPlatforms": [
+    "macOS-12+"
+  ]
+}

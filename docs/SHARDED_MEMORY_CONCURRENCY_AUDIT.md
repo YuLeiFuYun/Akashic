@@ -128,6 +128,17 @@ reservation.
   self-referential documentation/hash cycle.
 - `AkashicMemory` builds for `arm64-apple-ios15.0` with the internal atomic target.
 
+The pending-read stress coverage also has a separate test-governance liveness fix. A real stuck test
+process showed that CT-141's historical `2,000 * Task.yield()` polling loop was a scheduler-iteration
+budget rather than a time budget, and that a failed observation could reach `churn.value` before the
+blocked first read was released. The test-only patch uses a two-second `ContinuousClock` deadline,
+fail-fast `#require`, unconditional first-read release, and postpones cancelled-task result validation
+until after the blocking read is released. On a clean `16ec0e7c588068b062b53dff56211139f6de0b0f`
+worktree with only that test file changed, `FileBlobStoreConcurrentReadTests` ran as a nine-test suite
+twenty times; CT-141 actually started and passed in every invocation. The same isolated tree then
+passed full `scripts/verify.sh`. This is test liveness hardening only and is deliberately excluded from
+the four-file alpha.7 memory fast-path release candidate.
+
 ## Performance evidence boundary
 
 The published Akashic revision `2715f23d50b5a17b7328be41608eaf1b1c99b0d6` remains the source bound
@@ -138,23 +149,55 @@ process blocks; it must not be silently rebound to this working tree.
 The dynamic-unassigned-budget implementation first shipped as `0.1.0-alpha.6`
 (`2846d4715cc5917711ffa2f100ee310c2290de40`). The current `0.1.0-alpha.7`
 (`0376b960ec8abe54f2d4a9d7d66e97f395215eaf`) preserves that budget model and adds exact
-eviction-reporting variants for hosts that must mirror resident identity. Fovea Cache Lab was first
-placed in SwiftPM edited-dependency mode against the local Akashic working tree. A five-block memory calibration
-reported zero Fovea correctness failures, zero inferior endpoints, zero inconclusive endpoints and
-zero dominance failures. The post-refactor five-block rerun against the verified source reported
-directional median ratios versus LRUCache of approximately 1.298x hot-scan throughput, 1.624x lower
-hot-scan p99 latency, 3.257x concurrent throughput and 2.583x lower concurrent p99 latency. Publication
-and downstream adoption do not upgrade these runs: they remain mechanism evidence only, are not a
-replacement for the governed twenty-block campaign, and authorize no current-implementation formal
-performance claim.
+eviction-reporting variants for hosts that must mirror resident identity. A fresh governed Cache Lab
+run against the exact published alpha.7 checkout accepted all twenty clean process blocks with no
+correctness, inferior or inconclusive result, but the hot-scan throughput comparison against LRUCache
+reached only about 1.162x (95% interval about 1.156x--1.171x). It therefore failed the preregistered
+1.20x dominance floor even though it remained statistically superior. This is the current published
+revision's result; the older alpha.5 thirteen-of-thirteen campaign is not rebound to alpha.7.
+
+The regression was then isolated rather than tuned against the threshold. A same-host, fixed-hash
+revision A/B showed the large alpha.6 sharded-budget refactor accounting for roughly 2--3% of the old
+hot-scan delta, while the later eviction-reporting change added a further repeatable roughly 5--6%
+cost to ordinary non-reporting `insert`. The cause was not victim-array allocation: ordinary insert
+still carried a nil optional collector and its `inout`/conditional reporting path through every local
+SIEVE eviction. A generic no-op sink made the path slower and was rejected. The retained candidate
+physically separates ordinary insertion from reporting insertion while sharing only the post-eviction
+node-install tail; exact reporting semantics remain covered by the public-behavior tests.
+
+Fovea first edited Cache Lab to the broader verified development candidate without changing the V4
+workload or statistics. Five memory blocks cleared every dominance comparison, and the subsequent
+governed twenty-block scope-all campaign accepted 20/20 clean blocks with zero rejected attempts,
+zero correctness failures, zero inferior/inconclusive endpoints and zero dominance failures. That
+broader candidate's hot-scan throughput versus LRUCache was about 1.241x with a 95% interval about
+1.227x--1.254x.
+
+The implementation was then reduced further to an exact-alpha.7 four-file release candidate with
+Git-free source identity `117ae5fb9aae74a43a326ba0ab27d177ed4fe6890d3f575a7328b49e339636a3`
+across 411 files. It independently passes full Akashic verification and, together with the published
+ImageCraft alpha.8 candidate, passes Fovea's isolated Seatbelt production-component composition at
+965/965. After the Fovea source tree was frozen, a final governed edited-dependency Cache Lab campaign
+for this exact four-file candidate again accepted 20/20 clean blocks, with zero rejected attempts,
+zero correctness failures, zero inferior/inconclusive endpoints and zero dominance failures. All
+thirteen primary comparisons passed dominance; hot-scan throughput versus LRUCache had a median ratio
+about 1.249x and a 95% ratio interval about 1.240x--1.263x, clearing the locked 1.20x floor.
+
+These runs prove host-visible recovery for the edited candidate, not a release certificate: the final
+run reports `sourceIdentityBound=true`, `quiescentHostBound=true`, and both statistical gates true, but
+`sourceResolutionBound=false` and `bestClaimEligible=false` because Akashic was an edited dependency.
+Concrete source and host receipts remain outside this hashed source tree to avoid a self-referential
+evidence cycle.
 
 ## Downstream adoption boundary
 
 Fovea `develop` now pins `0.1.0-alpha.7` exactly at
 `0376b960ec8abe54f2d4a9d7d66e97f395215eaf`, and its rendered-memory path constructs
 `ShardedMemoryCache` and consumes the exact eviction report to keep its host-side cardinality governor
-synchronized with byte-driven residency; Akashic's protected `core` check is green for that revision. This closes the
-publication and exact-pin adoption steps that were open when the candidate was first audited. It does
-not close the separate evidence boundary: the historical twenty-block V4 result remains bound to
-`0.1.0-alpha.5`, while the current alpha.7 dynamic-budget implementation still requires a governed formal
-performance rerun plus stable-device resource evidence before a new ranking or stable-release claim.
+synchronized with byte-driven residency; Akashic's protected `core` check is green for that revision.
+This closes publication and exact-pin adoption for alpha.7, but it does not promote the local fast-path
+repair. The published alpha.7 twenty-block rerun has one locked dominance failure, while the exact
+four-file edited candidate has complete Akashic verification, Fovea 965/965 composition, and a
+source-bound/quiescent twenty-block thirteen-of-thirteen research result. The next lifecycle step is
+therefore an immutable Akashic revision containing only the repair, followed by an exact Fovea pin and
+a clean source-control-resolved twenty-block rerun. Protected release evidence and stable-device
+resource qualification remain independent gates before any stable ranking claim.

@@ -86,8 +86,9 @@ let restored = try await disk.read(digest: digest, partition: partition)
 
 当前本地证据包括：
 
-- 当前本地全仓测试面为 250 项 Swift Testing：Core 18、Memory 65、Disk 167；最终 source-frozen 综合 gate 仍以首尾 source identity 一致为准；
-- 12 项 durable-writer 行为测试（其中父目录 `0500` 的临时文件 create/open denial 使用真实 Darwin 系统调用）、1 项真实权限迁移、3 项真实挂载 APFS 满卷恢复和 3 项真实 APFS quota 恢复案例；
+- 当前本地全仓测试面为 257 项 Swift Testing；最终 source-frozen 综合 gate 仍以首尾 source identity 一致为准；
+- 16 项 durable-writer 行为测试，其中生产临时文件 create/open、rename 后 parent-directory open，以及 ACL `add_file`/`delete_child` denial 使用真实 Darwin 文件系统权限；ACL witness 会保存注入前的 POSIX mode 与有序 ACL 条目，并要求恢复后逐项完全一致；另有 2 项 manifest rename 权限迁移（父目录 mode 与 ACL `delete_child`）、3 项真实挂载 APFS 满卷恢复和 3 项真实 APFS quota 恢复案例；
+- 12 项独立 `BlobStore` v1 conformance 义务，通过外部 SwiftPM backend package 验证 partition、stage/publish/discard、digest、remove/GC、reopen、generation 与单 writer 的公开组件合同；该层明确不替代 crash/filesystem fault 或 Fovea host-composition 证据；
 - 显式 stage/publish 与 schema3 fast-xattr 各11个精确子进程 crash switch points；package-internal schema4 normal single-key 另有4-point matrix，distinct-key full checkpoint另有7-point matrix，并保留 recovery-of-recovery 的0→1→2 head中断恢复；此外还有3轮共78个固定种子的随机 `SIGKILL` 案例；
 - 12 个并发进程竞争同一 store generation，必须收敛到唯一 generation ID；
 - 6 个 Release 平台案例：Disk/Memory × macOS 12、iOS 15 Simulator、iOS 15 device；
@@ -104,6 +105,8 @@ let restored = try await disk.read(digest: digest, partition: partition)
 
 ```sh
 scripts/verify.sh
+# 单独重放公开 BlobStore/Generation 独立消费者资格：
+scripts/verify-blob-store-conformance-kit.sh
 ```
 
 更完整的本地发布机制门：
@@ -116,7 +119,7 @@ scripts/verify-fault-injection.sh
 scripts/verify-store-generation-contention.py
 ```
 
-`verify-release-readiness.sh` 在整条 campaign 首尾比较 source identity，并重放 CT-112 的 schema4 capability downgrade 与 annotated historical-tag source rebuild controls。fault-injection、store-generation contention 与完整 Apple platform matrix 也把 current-worktree source identity 写入各自证据，避免用 Git HEAD 代替 dirty candidate 的实际源码身份。
+`verify.sh` 已把 BlobStore v1 独立消费者资格纳入默认门，并将 `ConformanceKits` 纳入 source identity/clean-copy 覆盖。`verify-release-readiness.sh` 在整条 campaign 首尾比较 source identity，并重放 CT-112 的 schema4 capability downgrade 与 annotated historical-tag source rebuild controls。fault-injection、store-generation contention 与完整 Apple platform matrix 也把 current-worktree source identity 写入各自证据，避免用 Git HEAD 代替 dirty candidate 的实际源码身份。
 
 平台矩阵支持分片：
 
@@ -128,10 +131,10 @@ scripts/verify-platform-matrix.sh AkashicDisk ios-device
 
 ## 未完成
 
-- ACL、owner 迁移、directory-open，以及由真实文件系统触发的 `fsync`/rename/close 错误；父目录 `0500` 导致生产临时文件 create/open 真实返回 `EACCES`/`EPERM` 的窄门已覆盖；
+- owner 迁移，以及由真实文件系统触发的 directory-`fsync`/close 错误；父目录 mode transition 与 ACL 已覆盖生产临时文件 create/open、durable rename、manifest rename 和 rename 后 parent-directory open 的真实 `EACCES`/`EPERM` 边界；
 - 目标设备 RSS、FD、I/O bytes、metadata write amplification、reopen latency 和 energy；
 - 真正的断电、`F_FULLFSYNC` 对照和数小时级高迭代 kill-at-random 实验；
-- 多进程 reader snapshot/lease；
+- 多进程 reader 的公开 snapshot/lease contract 仍未产品化；当前只资格化 package-internal retirement turnstile 机制，并由独立 OS 进程 S1–S6 本地证据验证 writer intent、reader admission、unlink 后已打开 descriptor 的稳定读取、进程退出锁释放，以及 external writer 已持 gate 时本地 reader / writer-intent waiter 不阻塞初始 reader release 的 deadlock-freedom，不新增 public reader-lease API；
 - 当前精确 revision 的远端 clean-clone 完整复验；
 - Fovea 差分 trace、W3/W8/W13 组合验证和 rollback。
 

@@ -54,6 +54,35 @@ package struct DurableFileSystemOperations {
     }
 }
 
+/// 统一 package 内耐久写路径的 descriptor 所有权边界。
+///
+/// `fsync(2)` 的 `EINTR` 会重试；其他同步失败时仅尝试一次 `close` 并保留同步错误。
+/// 同步成功后的 `close(2)` 必须成功才能返回成功，且 close 失败绝不在同一 descriptor
+/// 上重试，因为失败后的 descriptor 状态不可安全猜测。
+package enum DurableFileDescriptorSynchronization {
+    package static func synchronizeAndClose(
+        _ descriptor: Int32,
+        synchronize: DurableFileSynchronizeOperation = { Darwin.fsync($0) },
+        close: DurableFileCloseOperation = { Darwin.close($0) }
+    ) throws {
+        do {
+            while true {
+                if synchronize(descriptor) == 0 { break }
+                if errno == EINTR { continue }
+                throw posixError()
+            }
+        } catch {
+            _ = close(descriptor)
+            throw error
+        }
+        guard close(descriptor) == 0 else { throw posixError() }
+    }
+
+    private static func posixError() -> POSIXError {
+        POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+    }
+}
+
 /// 在同一目录内暂存并耐久地原子替换文件。
 ///
 /// 成功返回前依次保证：暂存文件安全属性已设置、内容写完、文件 `fsync`、原子
@@ -239,9 +268,17 @@ package enum DurableFileWriter {
             0
         )
         guard descriptor >= 0 else { throw posixError() }
-        defer { _ = operations.close(descriptor) }
-        try StorageDirectorySecurity.validateOpenedDirectory(descriptor)
-        try synchronize(descriptor, operation: operations.synchronize)
+        do {
+            try StorageDirectorySecurity.validateOpenedDirectory(descriptor)
+        } catch {
+            _ = operations.close(descriptor)
+            throw error
+        }
+        try DurableFileDescriptorSynchronization.synchronizeAndClose(
+            descriptor,
+            synchronize: operations.synchronize,
+            close: operations.close
+        )
     }
 
     private static func systemOperations() -> DurableFileSystemOperations {

@@ -5,7 +5,7 @@ let package = Package(
     name: "AkashicNegativeConsumer",
     platforms: [.macOS(.v12)],
     dependencies: [
-        .package(path: "../.."),
+        .package(name: "Akashic", path: "../.."),
     ],
     targets: [
         .executableTarget(

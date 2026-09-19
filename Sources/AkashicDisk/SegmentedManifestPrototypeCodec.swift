@@ -159,76 +159,14 @@ extension SegmentedManifestPrototypeV1 {
             runs: runs
         )
     }
-    package static func makeRootV2(
-        generation: UInt64,
-        base: SegmentedManifestDescriptorV1,
-        runs: [SegmentedManifestDescriptorV1]
-    ) throws -> SegmentedManifestRootV1 {
-        try makeRoot(
-            profile: profileV2,
-            generation: generation,
-            base: base,
-            runs: runs
-        )
-    }
-    package static func makeRootV3(
-        generation: UInt64,
-        base: SegmentedManifestDescriptorV1,
-        runs: [SegmentedManifestDescriptorV1]
-    ) throws -> SegmentedManifestRootV1 {
-        try makeRoot(
-            profile: profileV3,
-            generation: generation,
-            base: base,
-            runs: runs
-        )
-    }
-    package static func makeRootV4(
-        generation: UInt64,
-        base: SegmentedManifestDescriptorV1,
-        runs: [SegmentedManifestDescriptorV1]
-    ) throws -> SegmentedManifestRootV1 {
-        try makeRoot(
-            profile: profileV4,
-            generation: generation,
-            base: base,
-            runs: runs
-        )
-    }
     package static func makeRootPreservingProfile(
         of currentRoot: SegmentedManifestRootV1,
         generation: UInt64,
         base: SegmentedManifestDescriptorV1,
         runs: [SegmentedManifestDescriptorV1]
     ) throws -> SegmentedManifestRootV1 {
-        switch currentRoot.profile {
-        case profileV1:
-            return try makeRoot(
-                generation: generation,
-                base: base,
-                runs: runs
-            )
-        case profileV2:
-            return try makeRootV2(
-                generation: generation,
-                base: base,
-                runs: runs
-            )
-        case profileV3:
-            return try makeRootV3(
-                generation: generation,
-                base: base,
-                runs: runs
-            )
-        case profileV4:
-            return try makeRootV4(
-                generation: generation,
-                base: base,
-                runs: runs
-            )
-        default:
-            throw AkashicError.invalidManifest
-        }
+        guard currentRoot.profile == profileV1 else { throw AkashicError.invalidManifest }
+        return try makeRoot(generation: generation, base: base, runs: runs)
     }
     private static func makeRoot(
         profile: String,
@@ -276,84 +214,28 @@ extension SegmentedManifestPrototypeV1 {
         guard try validateRootSeal(root) else { throw AkashicError.invalidManifest }
         return root
     }
-    package static func apply(
-        _ mutations: [SegmentedManifestMutation],
-        to source: [String: SegmentedManifestEntry]
-    ) throws -> [String: SegmentedManifestEntry] {
-        var result = source
-        var previousKey: String?
-        for mutation in mutations {
-            if let previousKey, mutation.key <= previousKey { throw AkashicError.invalidManifest }
-            previousKey = mutation.key
-            switch mutation {
-            case .upsert(let entry):
-                try validate(entry)
-                result[entry.key] = entry
-            case .tombstone(let key):
-                result.removeValue(forKey: key)
-            }
-        }
-        let physicalIDs = result.values.map(\.physicalID)
-        guard Set(physicalIDs).count == physicalIDs.count else { throw AkashicError.invalidManifest }
-        return result
-    }
-    package static func semanticStateCommitment(
-        _ state: [String: SegmentedManifestEntry]
-    ) throws -> String {
-        let entries = state.values.sorted { $0.key < $1.key }
-        var transcript = Data("AKASHIC-SEGMENTED-STATE-V1\0".utf8)
-        for entry in entries {
-            try validate(entry)
-            try appendManifestKey(entry.key, to: &transcript)
-            appendUUID(entry.physicalID.rawValue, to: &transcript)
-            transcript.append(entry.partition.canonicalBytes)
-            transcript.append(entry.digest.bytes)
-            appendLittleEndian(UInt64(entry.byteCount), to: &transcript)
-            appendLittleEndian(entry.lastAccess.timeIntervalSinceReferenceDate.bitPattern, to: &transcript)
-        }
-        return SHA256.hash(data: transcript).map { String(format: "%02x", $0) }.joined()
-    }
     private static func validateRoot(_ root: SegmentedManifestRootV1) throws {
         guard root.schemaVersion == schemaVersion,
+            root.profile == profileV1,
             root.generation > 0,
-            root.runs.count <= maximumRunDescriptors
+            root.base.kind == .baseJSON,
+            root.runs.count <= maximumRunDescriptors,
+            root.runs.allSatisfy({ $0.kind == .runV1 })
         else { throw AkashicError.invalidManifest }
-        switch root.profile {
-        case profileV1:
-            guard root.base.kind == .baseJSON,
-                root.runs.allSatisfy({ $0.kind == .runV1 })
-            else { throw AkashicError.invalidManifest }
-        case profileV2:
-            guard root.base.kind == .baseBinaryV1,
-                root.runs.allSatisfy({ $0.kind == .runV1 })
-            else { throw AkashicError.invalidManifest }
-        case profileV3:
-            guard root.base.kind == .baseBinaryV2,
-                root.runs.allSatisfy({ $0.kind == .runV1 })
-            else { throw AkashicError.invalidManifest }
-        case profileV4:
-            guard root.base.kind == .baseBinaryV2,
-                root.runs.allSatisfy({ $0.kind == .runV1 || $0.kind == .compoundRunV1 })
-            else { throw AkashicError.invalidManifest }
-        default:
-            throw AkashicError.invalidManifest
-        }
         try validateDescriptor(root.base)
         var referencedBytes = root.base.byteCount
         var names = Set([root.base.fileName])
         for run in root.runs {
             try validateDescriptor(run)
             let sum = referencedBytes.addingReportingOverflow(run.byteCount)
-            guard !sum.overflow else { throw AkashicError.invalidManifest }
+            guard !sum.overflow, names.insert(run.fileName).inserted else {
+                throw AkashicError.invalidManifest
+            }
             referencedBytes = sum.partialValue
-            // Physical identity is the canonical file name. Equal immutable bytes under distinct
-            // names are legitimate: a periodic workload may emit the exact same deterministic
-            // epoch delta again in a later generation. Each descriptor independently binds its
-            // bytes to SHA-256 at read time, so content-hash uniqueness adds no integrity proof and
-            // would turn repeated valid deltas into a liveness failure.
-            guard names.insert(run.fileName).inserted else { throw AkashicError.invalidManifest }
         }
-        guard referencedBytes <= maximumReferencedSegmentBytes else { throw AkashicError.invalidManifest }
+        guard referencedBytes <= maximumReferencedSegmentBytes else {
+            throw AkashicError.invalidManifest
+        }
     }
     private static func validateDescriptor(_ descriptor: SegmentedManifestDescriptorV1) throws {
         guard descriptor.byteCount > 0,
@@ -367,20 +249,6 @@ extension SegmentedManifestPrototypeV1 {
             guard descriptor.recordCount <= 100_000,
                 descriptor.byteCount <= maximumBaseBytes
             else { throw AkashicError.invalidManifest }
-        case .baseBinaryV1:
-            guard descriptor.recordCount <= SegmentedManifestBinaryBaseV1.maximumRecords,
-                descriptor.byteCount <= maximumBaseBytes,
-                SegmentedManifestBinaryBaseV1.expectedByteCount(
-                    recordCount: descriptor.recordCount
-                ) == descriptor.byteCount
-            else { throw AkashicError.invalidManifest }
-        case .baseBinaryV2:
-            guard descriptor.recordCount <= SegmentedManifestBinaryBaseV2.maximumRecords,
-                descriptor.byteCount <= maximumBaseBytes,
-                SegmentedManifestBinaryBaseV2.expectedByteCount(
-                    recordCount: descriptor.recordCount
-                ) == descriptor.byteCount
-            else { throw AkashicError.invalidManifest }
         case .runV1:
             let payload = descriptor.recordCount.multipliedReportingOverflow(by: runRecordBytes)
             let total = headerBytes.addingReportingOverflow(payload.partialValue)
@@ -391,12 +259,8 @@ extension SegmentedManifestPrototypeV1 {
                 descriptor.byteCount == total.partialValue,
                 descriptor.byteCount <= maximumRunBytes
             else { throw AkashicError.invalidManifest }
-        case .compoundRunV1:
-            guard descriptor.recordCount > 0,
-                descriptor.recordCount <= maximumRunRecords,
-                descriptor.byteCount >= 2 * headerBytes + SegmentedManifestCompoundRunV1.footerBytes,
-                descriptor.byteCount <= SegmentedManifestCompoundRunV1.maximumBytes
-            else { throw AkashicError.invalidManifest }
+        case .baseBinaryV1, .baseBinaryV2, .compoundRunV1:
+            throw AkashicError.invalidManifest
         }
     }
 
@@ -417,7 +281,7 @@ extension SegmentedManifestPrototypeV1 {
             entry.byteCount >= 0,
             entry.byteCount <= maximumBlobBytes,
             entry.lastAccess.timeIntervalSinceReferenceDate.isFinite,
-            entry.key == FileBlobStore.resourceProbeManifestKey(
+            entry.key == FileBlobStoreIdentity.manifestKey(
                 digest: entry.digest,
                 partition: entry.partition
             )

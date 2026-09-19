@@ -6,7 +6,7 @@ import os
 /// 该类型只管理一个分片的哈希桶、SIEVE/FIFO 链和已分配成本；跨分片总预算由
 /// `ShardedMemoryCache` 协调。所有 `*Locked` 成员都要求调用方已经持有本分片锁。
 final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unchecked Sendable {
-  private final class Node {
+  final class Node {
     var key: Key
     var rawHash: Int
     var value: Value
@@ -26,16 +26,16 @@ final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unch
   }
 
   private var lock = os_unfair_lock_s()
-  private var costLimit: Int
-  private var totalCost = 0
+  var costLimit: Int
+  var totalCost = 0
   private var bucketHeads: [Node?]
   private let bucketMask: UInt
   private let bucketHashShift: Int
   private var residentCount = 0
   private var visitedCount = 0
   private var visitEpoch: UInt64 = 1
-  private unowned(unsafe) var head: Node?
-  private unowned(unsafe) var tail: Node?
+  unowned(unsafe) var head: Node?
+  unowned(unsafe) var tail: Node?
   private unowned(unsafe) var hand: Node?
 
   init(costLimit: Int, bucketHashShift: Int, bucketSizingCostLimit: Int? = nil) {
@@ -234,82 +234,6 @@ final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unch
     return record
   }
 
-  func insertLocked(
-    _ value: Value,
-    for key: Key,
-    rawHash: Int,
-    normalizedCost: Int
-  ) {
-    var ignoredVictims: [MemoryCacheEvictionVictim<Key>]? = nil
-    insertLocked(
-      value,
-      for: key,
-      rawHash: rawHash,
-      normalizedCost: normalizedCost,
-      evictedVictims: &ignoredVictims
-    )
-  }
-
-  func insertLocked(
-    _ value: Value,
-    for key: Key,
-    rawHash: Int,
-    normalizedCost: Int,
-    evictedVictims: inout [MemoryCacheEvictionVictim<Key>]?
-  ) {
-    precondition(normalizedCost > 0 && normalizedCost <= costLimit)
-    let reusable = node(for: key, rawHash: rawHash)
-    if let reusable {
-      detach(reusable)
-    }
-
-    // 稳态扫描通常每次只淘汰一个节点。将首个 victim 原地改写为新条目，避免在锁内
-    // 反复分配/释放 Node；额外 victim 仍按经典 SIEVE 删除。
-    var recycled: Node?
-    while totalCost > costLimit - normalizedCost, let victim = nextVictim() {
-      evictedVictims?.append(MemoryCacheEvictionVictim(key: victim.key, cost: victim.cost))
-      detach(victim)
-      removeFromBucket(victim)
-      if recycled == nil {
-        recycled = victim
-      }
-    }
-
-    let node: Node
-    if let reusable {
-      reusable.value = value
-      reusable.cost = normalizedCost
-      reusable.visitedEpoch = 0
-      reusable.previous = tail
-      node = reusable
-    } else if let recycled {
-      recycled.key = key
-      recycled.rawHash = rawHash
-      recycled.value = value
-      recycled.cost = normalizedCost
-      recycled.visitedEpoch = 0
-      recycled.previous = tail
-      recycled.collisionNext = nil
-      insertIntoBucket(recycled)
-      node = recycled
-    } else {
-      node = Node(
-        key: key,
-        rawHash: rawHash,
-        value: value,
-        cost: normalizedCost,
-        previous: tail
-      )
-      insertIntoBucket(node)
-    }
-    tail?.next = node
-    if head == nil {
-      head = node
-    }
-    tail = node
-    totalCost += normalizedCost
-  }
-
   func updateCostLimitLocked(_ limit: Int) -> MemoryCacheRemovalSummary {
     let oldCount = residentCount
     let oldCost = totalCost
@@ -353,7 +277,7 @@ final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unch
     return summary
   }
 
-  private func nextVictim() -> Node? {
+  func nextVictim() -> Node? {
     guard residentCount > 0, let head else { return nil }
     if hand == nil {
       hand = head
@@ -389,7 +313,7 @@ final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unch
     visitedCount = 0
   }
 
-  private func detach(_ node: Node) {
+  func detach(_ node: Node) {
     if node.visitedEpoch == visitEpoch {
       visitedCount -= 1
     }
@@ -418,7 +342,7 @@ final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unch
     removeFromBucket(node)
   }
 
-  private func node(for key: Key, rawHash: Int) -> Node? {
+  func node(for key: Key, rawHash: Int) -> Node? {
     var candidate = bucketHeads[bucketIndex(rawHash)]
     while let current = candidate {
       if current.rawHash == rawHash, current.key == key {
@@ -429,14 +353,14 @@ final class ShardedMemoryShard<Key: Hashable & Sendable, Value: Sendable>: @unch
     return nil
   }
 
-  private func insertIntoBucket(_ node: Node) {
+  func insertIntoBucket(_ node: Node) {
     let index = bucketIndex(node.rawHash)
     node.collisionNext = bucketHeads[index]
     bucketHeads[index] = node
     residentCount += 1
   }
 
-  private func removeFromBucket(_ node: Node) {
+  func removeFromBucket(_ node: Node) {
     let index = bucketIndex(node.rawHash)
     guard let head = bucketHeads[index] else { return }
     if head === node {

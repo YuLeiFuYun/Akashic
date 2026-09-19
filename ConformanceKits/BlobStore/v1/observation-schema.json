@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://akashic.invalid/conformance/blob-store/v1/observation-schema.json",
+  "title": "Akashic BlobStore Conformance Observation v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kitID",
+    "contractVersion",
+    "status",
+    "executedTestCount",
+    "expectedTestCount",
+    "failureCount",
+    "backendPackageName",
+    "backendProduct",
+    "manifestSha256",
+    "observationSchemaSha256",
+    "harnessSha256",
+    "factorySha256",
+    "backendSourceSha256",
+    "akashicSourceIdentitySHA256",
+    "akashicSourceIdentityFileCount",
+    "akashicSourceIdentityID",
+    "obligations",
+    "releaseQualified"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "kitID": {"const": "AKASHIC-BLOB-STORE-CONFORMANCE-V1"},
+    "contractVersion": {"const": 1},
+    "status": {"enum": ["passed", "failed"]},
+    "executedTestCount": {"type": "integer", "minimum": 0},
+    "expectedTestCount": {"const": 12},
+    "failureCount": {"type": "integer", "minimum": 0},
+    "backendPackageName": {"type": "string", "minLength": 1},
+    "backendProduct": {"type": "string", "minLength": 1},
+    "manifestSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "observationSchemaSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "harnessSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "factorySha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "backendSourceSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "akashicSourceIdentitySHA256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "akashicSourceIdentityFileCount": {"type": "integer", "minimum": 1},
+    "akashicSourceIdentityID": {"const": "AKASHIC-SOURCE-IDENTITY-V2"},
+    "obligations": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["id", "testName", "observed"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^AKASHIC-BSC-0(0[1-9]|1[0-2])$"},
+          "testName": {"type": "string", "minLength": 1},
+          "observed": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "releaseQualified": {"const": false}
+  },
+  "additionalProperties": true
+}

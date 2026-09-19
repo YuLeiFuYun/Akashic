@@ -35,7 +35,20 @@ def test_count(path: Path) -> int:
     return int(matches[-1])
 
 
-def main() -> int:
+def missing_passing_tests(path: Path, names: tuple[str, ...]) -> list[str]:
+    text = path.read_text(errors="replace")
+    return [name for name in names if f'Test "{name}" passed' not in text]
+
+
+def passing_test_count(path: Path, errors: list[str]) -> int:
+    try:
+        return test_count(path)
+    except ValueError as error:
+        errors.append(str(error))
+        return 0
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--durable-log", type=Path, required=True)
     parser.add_argument("--permission-log", type=Path, required=True)
@@ -48,7 +61,42 @@ def main() -> int:
     parser.add_argument("--quota-matrix", type=Path, required=True)
     parser.add_argument("--source-identity", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def validate_required_acl_tests(
+    durable_log: Path, permission_log: Path, errors: list[str]
+) -> tuple[tuple[str, ...], tuple[str, ...], bool]:
+    durable_tests = (
+        "Real ACL add_file denial preserves bytes and exact ACL restoration",
+        "Real ACL delete_child rename denial preserves bytes and exact ACL restoration",
+    )
+    permission_tests = (
+        "Real ACL delete_child denial reopens miss after exact ACL restoration",
+    )
+    missing_durable = missing_passing_tests(durable_log, durable_tests)
+    missing_permission = missing_passing_tests(permission_log, permission_tests)
+    for name in missing_durable:
+        errors.append(f"durable log is missing required passing ACL test: {name}")
+    for name in missing_permission:
+        errors.append(f"permission log is missing required passing ACL test: {name}")
+    return durable_tests, permission_tests, not missing_durable and not missing_permission
+
+
+def validate_required_real_directory_fsync_test(
+    durable_log: Path, errors: list[str]
+) -> tuple[tuple[str, ...], bool]:
+    durable_tests = (
+        "Real directory fsync reaches the kernel after the visible rename",
+    )
+    missing = missing_passing_tests(durable_log, durable_tests)
+    for name in missing:
+        errors.append(f"durable log is missing required passing real directory fsync test: {name}")
+    return durable_tests, not missing
+
+
+def main() -> int:
+    args = parse_args()
 
     errors: list[str] = []
     source_identity = read_json(args.source_identity)
@@ -58,36 +106,26 @@ def main() -> int:
         errors.append("source identity must provide a SHA-256 digest")
     if not isinstance(source_identity_files, int) or source_identity_files < 1:
         errors.append("source identity must provide a positive file count")
-    try:
-        durable_count = test_count(args.durable_log)
-    except ValueError as error:
-        durable_count = 0
-        errors.append(str(error))
-    try:
-        permission_count = test_count(args.permission_log)
-    except ValueError as error:
-        permission_count = 0
-        errors.append(str(error))
-    try:
-        fast_xattr_count = test_count(args.fast_xattr_log)
-    except ValueError as error:
-        fast_xattr_count = 0
-        errors.append(str(error))
-    try:
-        fast_syscall_count = test_count(args.fast_syscall_log)
-    except ValueError as error:
-        fast_syscall_count = 0
-        errors.append(str(error))
+    durable_count = passing_test_count(args.durable_log, errors)
+    permission_count = passing_test_count(args.permission_log, errors)
+    fast_xattr_count = passing_test_count(args.fast_xattr_log, errors)
+    fast_syscall_count = passing_test_count(args.fast_syscall_log, errors)
 
     switch = read_json(args.switch_matrix)
     fast_switch = read_json(args.fast_switch_matrix)
     random_matrix = read_json(args.random_matrix)
     full_volume = read_json(args.full_volume_matrix)
     quota = read_json(args.quota_matrix)
-    if durable_count != 11:
-        errors.append(f"expected 11 durable syscall tests, observed {durable_count}")
-    if permission_count != 1:
-        errors.append(f"expected 1 permission-transition test, observed {permission_count}")
+    if durable_count != 17:
+        errors.append(f"expected 17 durable syscall tests, observed {durable_count}")
+    if permission_count != 2:
+        errors.append(f"expected 2 permission-transition tests, observed {permission_count}")
+    durable_acl_tests, permission_acl_tests, real_acl_named_tests_passed = (
+        validate_required_acl_tests(args.durable_log, args.permission_log, errors)
+    )
+    real_directory_fsync_tests, real_directory_fsync_named_tests_passed = (
+        validate_required_real_directory_fsync_test(args.durable_log, errors)
+    )
     if fast_xattr_count != 2:
         errors.append(f"expected 2 fast-xattr classification tests, observed {fast_xattr_count}")
     if fast_syscall_count != 4:
@@ -172,8 +210,8 @@ def main() -> int:
     head = git("rev-parse", "HEAD")
     status = git("status", "--porcelain")
     report = {
-        "schemaVersion": 7,
-        "reportID": "AKASHIC-FAULT-INJECTION-EVIDENCE-V7",
+        "schemaVersion": 11,
+        "reportID": "AKASHIC-FAULT-INJECTION-EVIDENCE-V11",
         "status": "failed" if errors else "passed",
         "verifiedCommit": head.stdout.strip() if head.returncode == 0 else "unverified-local",
         "includesWorkingTreeChanges": status.returncode != 0 or bool(status.stdout.strip()),
@@ -188,12 +226,18 @@ def main() -> int:
                 "file-and-directory-fsync-eintr-retry",
                 "deferred-directory-sync-stops-after-rename-and-never-claims-directory-synced",
                 "temporary-file-open-failure-preserves-old-destination",
+                "real-parent-mode-temporary-open-denial-preserves-old-destination",
+                "real-acl-add-file-temporary-open-denial-preserves-old-destination",
+                "real-acl-delete-child-rename-denial-preserves-old-destination",
+                "real-directory-fsync-reaches-kernel-after-visible-rename",
                 "enospc-after-partial-write-preserves-old-destination",
                 "file-fsync-failure-preserves-old-destination",
                 "close-failure-is-not-retried-and-preserves-old-destination",
                 "rename-enospc-preserves-old-destination",
                 "directory-open-failure-reports-visible-but-not-proven-durable-replacement",
+                "real-parent-mode-directory-open-denial-reports-visible-but-not-proven-durable-replacement",
                 "directory-fsync-failure-reports-visible-but-not-proven-durable-replacement",
+                "directory-close-failure-is-not-retried-after-successful-directory-fsync-and-visible-replacement",
             ],
             "logSHA256": sha256(args.durable_log),
         },
@@ -220,8 +264,26 @@ def main() -> int:
         },
         "permissionTransition": {
             "testCount": permission_count,
-            "behavior": "manifest-rename-denial-preserves-miss-and-bootstrap-cleans-leftovers",
+            "behaviors": [
+                "parent-mode-manifest-rename-denial-preserves-miss-and-bootstrap-cleans-leftovers",
+                "real-acl-delete-child-manifest-rename-denial-preserves-miss-and-bootstrap-cleans-leftovers",
+            ],
             "logSHA256": sha256(args.permission_log),
+        },
+        "realACLRestoration": {
+            "durableNamedTests": list(durable_acl_tests),
+            "permissionNamedTests": list(permission_acl_tests),
+            "namedTestsPassed": real_acl_named_tests_passed,
+            "exactACLEntryRestorationClaim": real_acl_named_tests_passed,
+            "posixModeUnchangedClaim": real_acl_named_tests_passed,
+            "powerLossClaim": False,
+        },
+        "realDirectoryFsync": {
+            "durableNamedTests": list(real_directory_fsync_tests),
+            "namedTestsPassed": real_directory_fsync_named_tests_passed,
+            "kernelFsyncReachedAfterVisibleRenameClaim": real_directory_fsync_named_tests_passed,
+            "physicalDeviceQualification": False,
+            "powerLossClaim": False,
         },
         "stagePublishProcessCrash": {
             "caseCount": switch.get("caseCount"),
@@ -302,11 +364,15 @@ def main() -> int:
             "writeEINTRRetried": not errors,
             "fileAndDirectoryFsyncEINTRRetried": not errors,
             "temporaryOpenFailurePreservesPublishedDestination": not errors,
+            "realParentModeTemporaryOpenDenialPreservesPublishedDestination": not errors,
+            "realACLAddFileTemporaryOpenDenialPreservesPublishedDestination": not errors,
+            "realACLDeleteChildRenameDenialPreservesPublishedDestination": not errors,
             "writeENOSPCPreservesPublishedDestination": not errors,
             "fileFsyncFailurePreservesPublishedDestination": not errors,
             "closeFailureIsNotRetried": not errors,
             "renameENOSPCPreservesPublishedDestination": not errors,
             "directoryOpenFailureHasVisibleButUnprovenDurability": not errors,
+            "realParentModeDirectoryOpenDenialHasVisibleButUnprovenDurability": not errors,
             "directoryFsyncFailureHasVisibleButUnprovenDurability": not errors,
             "fastXattrUnsupportedFallsBackOnlyForExplicitIncompatibility": not errors,
             "fastXattrHardErrorsDoNotFallBack": not errors,
@@ -314,6 +380,9 @@ def main() -> int:
             "fastCommitPreRenameFaultsPreserveCleanMiss": not errors,
             "fastCommitPostRenameDirectoryFaultsConvergeOnReopen": not errors,
             "permissionRestorationAllowsBootstrapConvergence": not errors,
+            "realACLDeleteChildManifestDenialReopensAsCleanMiss": not errors,
+            "realACLRestorationMatchesBaselineEntries": real_acl_named_tests_passed,
+            "realDirectoryFsyncReachesKernelAfterVisibleRename": real_directory_fsync_named_tests_passed,
             "realAPFSFullVolumeENOSPCRecovery": not errors,
             "realAPFSQuotaExhaustionRecovery": not errors,
             "quotaFailuresPreserveKernelENOSPC": not errors,

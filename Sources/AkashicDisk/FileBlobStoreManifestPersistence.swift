@@ -243,14 +243,6 @@ extension FileBlobStore {
     func checkpointManifest(
         applying transition: ManifestOwnershipTransition
     ) throws -> Manifest {
-        if loadedManifestSchemaVersion == Self.segmentedManifestSchemaVersion,
-            let profile = segmentedManifestRoot?.profile,
-            profile == SegmentedManifestPrototypeV1.profileV3
-                || profile == SegmentedManifestPrototypeV1.profileV4
-        {
-            return try checkpointSegmentedManifest(applying: transition)
-        }
-
         var entries = manifest.entries
         if let entry = transition.newEntry {
             entries[transition.key] = entry

@@ -17,7 +17,6 @@ let package = Package(
         .library(name: "AkashicMemory", targets: ["AkashicMemory"]),
         .library(name: "AkashicDisk", targets: ["AkashicDisk"]),
         .executable(name: "AkashicCrashProbe", targets: ["AkashicCrashProbe"]),
-        .executable(name: "AkashicResourceProbe", targets: ["AkashicResourceProbe"]),
     ],
     targets: [
         .target(
@@ -43,11 +42,6 @@ let package = Package(
         .executableTarget(
             name: "AkashicCrashProbe",
             dependencies: ["AkashicCore", "AkashicDisk"],
-            swiftSettings: concurrencySettings
-        ),
-        .executableTarget(
-            name: "AkashicResourceProbe",
-            dependencies: ["AkashicCore", "AkashicDisk", "AkashicMemory"],
             swiftSettings: concurrencySettings
         ),
         .testTarget(

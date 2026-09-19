@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 SCHEMA_VERSION = 2
 EXPECTED_IDENTITY_ID = 'AKASHIC-SOURCE-IDENTITY-V2'
 EXPECTED_COVERAGE_MODE = "explicit-top-level-complete-v2"
-EXPECTED_INCLUDED_TOP_LEVEL = frozenset(['.github', '.gitignore', 'API', 'CONTRIBUTING.md', 'Fixtures', 'LICENSE', 'Package.swift', 'README.md', 'ROADMAP.md', 'SECURITY.md', 'Sources', 'Tests', 'Tools', 'docs', 'scripts'])
+EXPECTED_INCLUDED_TOP_LEVEL = frozenset(['.github', '.gitignore', 'API', 'CONTRIBUTING.md', 'ConformanceKits', 'Fixtures', 'LICENSE', 'Package.swift', 'README.md', 'ROADMAP.md', 'SECURITY.md', 'Sources', 'Tests', 'Tools', 'docs', 'scripts'])
 EXPECTED_EXCLUDED_TOP_LEVEL = frozenset(['.artifacts', '.build', '.git', '.swiftpm'])
 EXPECTED_EXCLUDED_SUBTREES = tuple([])
 EXPECTED_EXCLUDED_SUBTREE_PARTS = tuple(

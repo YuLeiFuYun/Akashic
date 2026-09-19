@@ -104,9 +104,6 @@ struct SegmentedManifestRootTranscriptV1: Codable {
 package enum SegmentedManifestPrototypeV1 {
     package static let schemaVersion = 5
     package static let profileV1 = "segmentedDirectoryHeadV1"
-    package static let profileV2 = "segmentedDirectoryHeadV2"
-    package static let profileV3 = "segmentedDirectoryHeadV3"
-    package static let profileV4 = "segmentedDirectoryHeadV4"
     package static let profile = profileV1
     package static let headerBytes = 64
     package static let runRecordBytes = 136
