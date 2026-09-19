@@ -39,96 +39,9 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
     let fastCommitOperations: FileBlobStoreFastCommitOperations
     let directoryHeadOperations: FileBlobStoreDirectoryHeadOperations
     let readIO: FileBlobStoreReadIO
-    let allowsSegmentedProfileV2: Bool
-    let allowsSegmentedProfileV3: Bool
-    let allowsSegmentedProfileV4: Bool
-    let segmentedManifestRunCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy
     var manifest: Manifest
     var loadedManifestSchemaVersion: UInt16
     var segmentedManifestRoot: SegmentedManifestRootV1?
-    var segmentedManifestCompactionCandidateName: String?
-    struct SegmentedManifestCheckpointPresealCandidate: Sendable {
-        let generation: UInt64
-        let sourceSequence: UInt64
-        let sourceDistinctKeyCount: Int
-        let sourceHeadRoot: Data
-        let descriptor: SegmentedManifestDescriptorV1
-    }
-    /// Non-authoritative package-only checkpoint-prefix candidate. The file remains reclaimable
-    /// physical segment debt until a later root publication references it; bootstrap never treats
-    /// this actor-local hint as logical authority.
-    var segmentedManifestCheckpointPresealCandidate: SegmentedManifestCheckpointPresealCandidate?
-    struct SegmentedManifestCompoundPresealCandidate: Sendable {
-        let generation: UInt64
-        let sourceSequence: UInt64
-        let sourceDistinctKeyCount: Int
-        let sourceHeadRoot: Data
-        let draft: SegmentedManifestCompoundRunV1.Draft
-    }
-    /// V4 one-descriptor prefix draft. Like the V3 two-run preseal, this is physical state only;
-    /// no root references it until checkpoint finalization succeeds.
-    var segmentedManifestCompoundPresealCandidate: SegmentedManifestCompoundPresealCandidate?
-    struct SegmentedManifestRunPrefixCollapseCandidate: Sendable {
-        let generation: UInt64
-        let profile: String
-        let base: SegmentedManifestDescriptorV1
-        let sourcePrefixRuns: [SegmentedManifestDescriptorV1]
-        let replacementRuns: [SegmentedManifestDescriptorV1]
-        let touchedKeyCount: Int
-        let finalUpsertCount: Int
-        let inputRunBytes: Int
-        let outputRunBytes: Int
-    }
-    /// Non-authoritative replacement for an immutable authoritative run prefix. Later checkpoints
-    /// may append suffix runs without invalidating this candidate; adoption is allowed only while
-    /// the exact original prefix is still present. Candidate files are physical topology only.
-    var segmentedManifestRunPrefixCollapseCandidate:
-        SegmentedManifestRunPrefixCollapseCandidate?
-    /// Detached run-prefix planning task, if any. Hard-cap rescue cancels it cooperatively but
-    /// keeps the source read lease until the task has actually stopped touching frozen files.
-    var segmentedManifestRunPrefixPreparationTask:
-        Task<SegmentedManifestRunCollapsePlanV1?, Error>?
-    var segmentedManifestRunPrefixPreparationToken: UUID?
-    /// Exact unique output names reserved by detached stable-prefix materialization. Some may not
-    /// exist yet; hard-cap capacity accounting treats every missing name as an unmaterialized slot.
-    var segmentedManifestRunPrefixMaterializationNames: Set<String>
-    var segmentedManifestRunPrefixMaterializationTask:
-        Task<[SegmentedManifestDescriptorV1], Error>?
-    var segmentedManifestRunPrefixMaterializationToken: UUID?
-    /// Actor-local diagnostics/state for the package-only automatic stable-prefix scheduler.
-    /// The outer scheduler Task is intentionally not retained by the actor: it strongly retains
-    /// the store until the bounded background attempt finishes, preserving writer exclusivity
-    /// without creating a store -> task -> store reference cycle.
-    var segmentedManifestAutomaticStablePrefixInFlight: Bool
-    var segmentedManifestAutomaticStablePrefixAttemptCount: Int
-    var segmentedManifestAutomaticStablePrefixPreparedCount: Int
-    var segmentedManifestAutomaticStablePrefixAdoptedCount: Int
-    var segmentedManifestAutomaticStablePrefixNilCount: Int
-    var segmentedManifestAutomaticStablePrefixErrorCount: Int
-    var segmentedManifestAutomaticStablePrefixHardCapCancellationCount: Int
-    var segmentedManifestAutomaticStablePrefixPlannerNoCandidateCount: Int
-    var segmentedManifestAutomaticStablePrefixFrozenDescriptorFloorCount: Int
-    var segmentedManifestAutomaticStablePrefixFrozenByteExpansionCount: Int
-    var segmentedManifestAutomaticStablePrefixSuffixBeforeMaterializationCount: Int
-    var segmentedManifestAutomaticStablePrefixSuffixAfterMaterializationCount: Int
-    var segmentedManifestAutomaticStablePrefixStaleOrCancelledCount: Int
-    var segmentedManifestAutomaticStablePrefixNextRetryRunCount: Int?
-    var segmentedManifestAutomaticStablePrefixLastRejection:
-        FileBlobStoreSegmentedRunPrefixPreparationRejection?
-    var segmentedManifestAutomaticStablePrefixLastTriggerGeneration: UInt64?
-    var segmentedManifestAutomaticStablePrefixLastTriggerRunCount: Int?
-    var segmentedManifestAutomaticStablePrefixLastPreparedSuffixRunCount: Int?
-    var segmentedManifestAutomaticStablePrefixMaximumPreparedSuffixRunCount: Int
-    var segmentedManifestAutomaticStablePrefixPreparationObserver:
-        FileBlobStoreSegmentedCompactionPreparationObserver?
-    var segmentedManifestAutomaticStablePrefixMaterializationObserver:
-        FileBlobStoreSegmentedCompactionPreparationObserver?
-    var segmentedManifestCompoundFinalizeFaultInjector:
-        SegmentedManifestCompoundRunV1.FinalizeFaultInjector?
-    /// Physical read lease for immutable base/run descriptors captured by an in-flight detached
-    /// V3 compaction. Foreground topology changes may supersede their logical authority, but must
-    /// not unlink these files until detached preparation has finished reading its frozen root.
-    var segmentedManifestCompactionReadLeaseNames: Set<String>
     var directoryHeadState: DirectoryHeadRecoveredState?
     /// Schema4 hot-path ownership proof rebuilt from a fully validated manifest at bootstrap or
     /// checkpoint. Schema3 deliberately leaves this nil; its existing persistence paths keep their
@@ -166,11 +79,7 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         faultInjector: @escaping FileBlobStoreFaultInjector,
         fastCommitOperations: FileBlobStoreFastCommitOperations,
         directoryHeadOperations: FileBlobStoreDirectoryHeadOperations,
-        readOperations: FileBlobStoreReadOperations,
-        allowsSegmentedProfileV2: Bool,
-        allowsSegmentedProfileV3: Bool,
-        allowsSegmentedProfileV4: Bool,
-        segmentedManifestRunCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy
+        readOperations: FileBlobStoreReadOperations
     ) {
         self.blobs = root.appendingPathComponent("blobs", isDirectory: true)
         self.manifestURL = root.appendingPathComponent("manifest.json")
@@ -180,45 +89,9 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         self.fastCommitOperations = fastCommitOperations
         self.directoryHeadOperations = directoryHeadOperations
         self.readIO = FileBlobStoreReadIO(maximumInFlightBytes: min(FileBlobStoreReadIO.maximumDefaultInFlightBytes, limits.softTotalBytes), operations: readOperations)
-        self.allowsSegmentedProfileV2 = allowsSegmentedProfileV2
-        self.allowsSegmentedProfileV3 = allowsSegmentedProfileV3
-        self.allowsSegmentedProfileV4 = allowsSegmentedProfileV4
-        self.segmentedManifestRunCapacityPolicy = segmentedManifestRunCapacityPolicy
         self.manifest = Manifest()
         self.loadedManifestSchemaVersion = Self.currentSchemaVersion
         self.segmentedManifestRoot = nil
-        self.segmentedManifestCompactionCandidateName = nil
-        self.segmentedManifestCheckpointPresealCandidate = nil
-        self.segmentedManifestCompoundPresealCandidate = nil
-        self.segmentedManifestRunPrefixCollapseCandidate = nil
-        self.segmentedManifestRunPrefixPreparationTask = nil
-        self.segmentedManifestRunPrefixPreparationToken = nil
-        self.segmentedManifestRunPrefixMaterializationNames = []
-        self.segmentedManifestRunPrefixMaterializationTask = nil
-        self.segmentedManifestRunPrefixMaterializationToken = nil
-        self.segmentedManifestAutomaticStablePrefixInFlight = false
-        self.segmentedManifestAutomaticStablePrefixAttemptCount = 0
-        self.segmentedManifestAutomaticStablePrefixPreparedCount = 0
-        self.segmentedManifestAutomaticStablePrefixAdoptedCount = 0
-        self.segmentedManifestAutomaticStablePrefixNilCount = 0
-        self.segmentedManifestAutomaticStablePrefixErrorCount = 0
-        self.segmentedManifestAutomaticStablePrefixHardCapCancellationCount = 0
-        self.segmentedManifestAutomaticStablePrefixPlannerNoCandidateCount = 0
-        self.segmentedManifestAutomaticStablePrefixFrozenDescriptorFloorCount = 0
-        self.segmentedManifestAutomaticStablePrefixFrozenByteExpansionCount = 0
-        self.segmentedManifestAutomaticStablePrefixSuffixBeforeMaterializationCount = 0
-        self.segmentedManifestAutomaticStablePrefixSuffixAfterMaterializationCount = 0
-        self.segmentedManifestAutomaticStablePrefixStaleOrCancelledCount = 0
-        self.segmentedManifestAutomaticStablePrefixNextRetryRunCount = nil
-        self.segmentedManifestAutomaticStablePrefixLastRejection = nil
-        self.segmentedManifestAutomaticStablePrefixLastTriggerGeneration = nil
-        self.segmentedManifestAutomaticStablePrefixLastTriggerRunCount = nil
-        self.segmentedManifestAutomaticStablePrefixLastPreparedSuffixRunCount = nil
-        self.segmentedManifestAutomaticStablePrefixMaximumPreparedSuffixRunCount = 0
-        self.segmentedManifestAutomaticStablePrefixPreparationObserver = nil
-        self.segmentedManifestAutomaticStablePrefixMaterializationObserver = nil
-        self.segmentedManifestCompoundFinalizeFaultInjector = nil
-        self.segmentedManifestCompactionReadLeaseNames = []
         self.directoryHeadState = nil
         self.blobDirectoryEntryCount = nil
     }
@@ -301,79 +174,6 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         )
     }
 
-    /// Package-only qualification seam for the research V2 binary-base profile. This exercises
-    /// the real FileBlobStore mutation/recovery paths without expanding the public open contract.
-    package static func openSegmentedV2Candidate(
-        root: URL,
-        limits: FileBlobStoreLimits = FileBlobStoreLimits(),
-        faultInjector: @escaping FileBlobStoreFaultInjector = { _ in },
-        directoryHeadOperations: FileBlobStoreDirectoryHeadOperations = .system
-    ) async throws -> FileBlobStore {
-        try await open(
-            root: root,
-            limits: limits,
-            faultInjector: faultInjector,
-            bootstrapObserver: { _ in },
-            fastCommitOperations: .system,
-            directoryHeadOperations: directoryHeadOperations,
-            readOperations: .system,
-            allowsSegmentedProfileV2: true,
-            allowsSegmentedProfileV3: false,
-            allowsSegmentedProfileV4: false
-        )
-    }
-
-    package static func openSegmentedV3Candidate(
-        root: URL,
-        limits: FileBlobStoreLimits = FileBlobStoreLimits(),
-        faultInjector: @escaping FileBlobStoreFaultInjector = { _ in },
-        runCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy = .rejectAtHardLimit,
-        directoryHeadOperations: FileBlobStoreDirectoryHeadOperations = .system
-    ) async throws -> FileBlobStore {
-        try await open(
-            root: root,
-            limits: limits,
-            faultInjector: faultInjector,
-            bootstrapObserver: { _ in },
-            fastCommitOperations: .system,
-            directoryHeadOperations: directoryHeadOperations,
-            readOperations: .system,
-            allowsSegmentedProfileV2: false,
-            allowsSegmentedProfileV3: true,
-            allowsSegmentedProfileV4: false,
-            segmentedManifestRunCapacityPolicy: runCapacityPolicy
-        )
-    }
-
-    /// Package-only qualification seam for the one-descriptor compound-run profile. Public open,
-    /// V2, and V3 readers remain fail-closed on this profile.
-    package static func openSegmentedV4Candidate(
-        root: URL,
-        limits: FileBlobStoreLimits = FileBlobStoreLimits(),
-        faultInjector: @escaping FileBlobStoreFaultInjector = { _ in },
-        runCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy = .rejectAtHardLimit,
-        directoryHeadOperations: FileBlobStoreDirectoryHeadOperations = .system
-    ) async throws -> FileBlobStore {
-        if let prefixRunCount = runCapacityPolicy.automaticV4StablePrefixRunCount,
-            !(2...62).contains(prefixRunCount)
-        {
-            throw AkashicError.limitExceeded
-        }
-        return try await open(
-            root: root,
-            limits: limits,
-            faultInjector: faultInjector,
-            bootstrapObserver: { _ in },
-            fastCommitOperations: .system,
-            directoryHeadOperations: directoryHeadOperations,
-            readOperations: .system,
-            allowsSegmentedProfileV2: false,
-            allowsSegmentedProfileV3: false,
-            allowsSegmentedProfileV4: true,
-            segmentedManifestRunCapacityPolicy: runCapacityPolicy
-        )
-    }
-
     private static func open(
         root: URL,
         limits: FileBlobStoreLimits,
@@ -381,11 +181,7 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
         bootstrapObserver: @escaping FileBlobStoreBootstrapObserver,
         fastCommitOperations: FileBlobStoreFastCommitOperations,
         directoryHeadOperations: FileBlobStoreDirectoryHeadOperations = .system,
-        readOperations: FileBlobStoreReadOperations = .system,
-        allowsSegmentedProfileV2: Bool = false,
-        allowsSegmentedProfileV3: Bool = false,
-        allowsSegmentedProfileV4: Bool = false,
-        segmentedManifestRunCapacityPolicy: FileBlobStoreSegmentedRunCapacityPolicy = .rejectAtHardLimit
+        readOperations: FileBlobStoreReadOperations = .system
     ) async throws -> FileBlobStore {
         let writerLease = try await writerLeaseAcquirer.acquire(root: root)
         let store = FileBlobStore(
@@ -395,11 +191,7 @@ public actor FileBlobStore: BlobStoreMaintaining, TransactionalBlobStoring {
             faultInjector: faultInjector,
             fastCommitOperations: fastCommitOperations,
             directoryHeadOperations: directoryHeadOperations,
-            readOperations: readOperations,
-            allowsSegmentedProfileV2: allowsSegmentedProfileV2,
-            allowsSegmentedProfileV3: allowsSegmentedProfileV3,
-            allowsSegmentedProfileV4: allowsSegmentedProfileV4,
-            segmentedManifestRunCapacityPolicy: segmentedManifestRunCapacityPolicy
+            readOperations: readOperations
         )
         try await store.bootstrap(root: root, observer: bootstrapObserver)
         return store

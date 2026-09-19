@@ -1,3 +1,4 @@
+@testable import AkashicDisk
 import AkashicCore
 import Dispatch
 import Foundation

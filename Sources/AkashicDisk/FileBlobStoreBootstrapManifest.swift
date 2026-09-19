@@ -71,12 +71,6 @@ extension FileBlobStore {
         let root = try SegmentedManifestPrototypeV1.readRoot(from: manifestURL)
         guard root.schemaVersion == Int(Self.segmentedManifestSchemaVersion),
             root.profile == SegmentedManifestPrototypeV1.profileV1
-                || (allowsSegmentedProfileV2
-                    && root.profile == SegmentedManifestPrototypeV1.profileV2)
-                || (allowsSegmentedProfileV3
-                    && root.profile == SegmentedManifestPrototypeV1.profileV3)
-                || (allowsSegmentedProfileV4
-                    && root.profile == SegmentedManifestPrototypeV1.profileV4)
         else { throw AkashicError.invalidManifest }
         try SegmentedManifestSegmentCleanupV1.validateReferencedProductionOwnership(root: root)
         let recovered = try SegmentedManifestPrototypeV1.recover(
